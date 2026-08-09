@@ -26,6 +26,22 @@ import (
 // argue with the software about it.
 const FetchEnv = "LOCALDRIVE_FETCH_FFMPEG"
 
+// These downloads are not checked against a pinned checksum, and that is a
+// deliberate choice rather than an oversight.
+//
+// A pin needs a versioned artifact to pin to. The Linux builds are published
+// at a rolling "release" url whose contents change with every upstream
+// release, and the only digest beside them is md5. Pinning a hash to a url
+// that changes means video previews stop working, silently, on the day
+// upstream ships anything, which trades a small risk for a certainty of
+// breaking. The alternative sources checked have the same rolling shape.
+//
+// So the trust here is in the host and in TLS, the download is announced in
+// the log when it happens, and an operator who will not accept that has
+// FetchEnv to turn it off and install ffmpeg from their own distribution.
+// Recorded in docs/contributing/security-review.mdx so it stays a decision
+// somebody made rather than something nobody noticed.
+
 // where the builds come from, per platform. Static, so nothing here decides
 // at runtime what to download from where.
 var ffmpegBuilds = map[string]struct {
@@ -78,7 +94,13 @@ func FetchFFmpeg(ctx context.Context, log *slog.Logger, dir string) string {
 		target += ".exe"
 	}
 
-	log.Info("downloading ffmpeg for video previews, this happens once", "from", build.url)
+	// say where it comes from and that it is not checksum verified, so this is
+	// a visible trust decision rather than a silent one. LOCALDRIVE_FETCH_FFMPEG
+	// turns it off.
+	log.Info("downloading ffmpeg for video previews, this happens once",
+		"from", build.url,
+		"checksum_pinned", false,
+		"disable_with", FetchEnv+"=false")
 	start := time.Now()
 
 	if err := download(ctx, build.url, build.member, target); err != nil {

@@ -307,11 +307,17 @@ function RunWindows() {
       <Step n={1} title="Run it with no arguments">
         <Terminal
           lines={[
-            { kind: "command", text: ".\\localdrive.exe" },
+            { kind: "command", text: ".\\server.exe" },
             { kind: "blank" },
             { kind: "comment", text: "double clicking the file does the same thing" },
           ]}
         />
+        <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
+          The downloaded file is called <code className="text-fg">server.exe</code>.
+          Rename it to <code className="text-fg">localdrive.exe</code> if you
+          prefer, or let setup put it on your PATH, and every later command
+          becomes just <code className="text-fg">localdrive</code>.
+        </p>
         <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
           With no arguments it runs setup. It asks five questions: where to keep
           things, whether to use Docker, which port, whether you have a domain,
@@ -329,22 +335,30 @@ function RunWindows() {
       <Step n={3} title="Open it">
         <Terminal
           lines={[
-            { kind: "output", text: "https://localhost:7443" },
+            { kind: "output", text: "http://localhost:7443" },
             { kind: "blank" },
             { kind: "comment", text: "it also prints a QR code to scan from a phone" },
           ]}
         />
         <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
-          Your browser warns once that the connection is not private. That is
-          expected with no domain: the server made its own certificate, because
-          no authority on the internet can vouch for a computer in your house.
+          Plain HTTP, and no certificate warning, because there is no
+          self signed certificate involved. No authority issues certificates for
+          an address on your own network, so the server does not pretend
+          otherwise. Set a domain and it gets a real one automatically. See{" "}
+          <Link href="/docs/self-hosting/https" className="text-accent hover:underline">
+            HTTP and HTTPS
+          </Link>
+          .
         </p>
       </Step>
       <Step n={4} title="Keep it running">
         <Terminal
           lines={[
-            { kind: "command", text: ".\\localdrive.exe status" },
-            { kind: "command", text: ".\\localdrive.exe logs" },
+            { kind: "command", text: ".\\server.exe service" },
+            { kind: "blank" },
+            { kind: "comment", text: "registers it with Task Scheduler and starts it" },
+            { kind: "command", text: ".\\server.exe status" },
+            { kind: "command", text: ".\\server.exe logs" },
           ]}
         />
       </Step>
@@ -355,14 +369,24 @@ function RunWindows() {
 function RunLinux() {
   return (
     <ol>
-      <Step n={1} title="Run it with no arguments">
+      <Step n={1} title="Allow it to run, then run it">
         <Terminal
           lines={[
-            { kind: "command", text: "localdrive" },
+            { kind: "comment", text: "the downloaded file is called server" },
+            { kind: "command", text: "chmod +x server" },
+            { kind: "command", text: "./server" },
             { kind: "blank" },
             { kind: "comment", text: "asks five questions, then sets everything up" },
           ]}
         />
+        <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
+          A fresh download has no execute permission, which is why{" "}
+          <code className="text-fg">chmod</code> comes first. Setup then offers
+          to put it on your PATH, and after that every command on this page is
+          just <code className="text-fg">localdrive</code> from any directory.
+          If you skipped that, run{" "}
+          <code className="text-fg">./server install-path</code> later.
+        </p>
       </Step>
       <Step n={2} title="Let it generate its own secrets">
         <p className="text-[14px] leading-[21px] text-fg-secondary">
@@ -374,28 +398,44 @@ function RunLinux() {
       <Step n={3} title="Open it">
         <Terminal
           lines={[
-            { kind: "output", text: "https://<your-ip>:7443" },
+            { kind: "output", text: "http://<your-ip>:7443" },
             { kind: "blank" },
             { kind: "comment", text: "a QR code is printed for scanning from a phone" },
           ]}
         />
+        <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
+          Plain HTTP on your own network, because no authority issues
+          certificates for an address like that one. Set a domain and the binary
+          gets a real certificate on its own, and keeps answering on the same
+          port for the addresses a certificate cannot cover. See{" "}
+          <Link href="/docs/self-hosting/https" className="text-accent hover:underline">
+            HTTP and HTTPS
+          </Link>
+          .
+        </p>
       </Step>
       <Step n={4} title="Or run it in the foreground, with no Docker">
         <Terminal lines={[{ kind: "command", text: "localdrive serve" }]} />
         <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
-          Useful under systemd or in a terminal you are watching. You lose three
-          things this way, cleanly and with no errors: HTTPS, drive management,
-          and network discovery.
+          Useful in a terminal you are watching. Two things degrade this way,
+          cleanly and with no errors: drive management from the app, and network
+          discovery. HTTPS is not one of them, since the binary holds its own
+          certificate when a domain is set.
         </p>
       </Step>
       <Step n={5} title="Run it at boot">
         <Terminal
           lines={[
-            { kind: "command", text: "sudo systemctl enable --now localdrive" },
+            { kind: "command", text: "localdrive service" },
             { kind: "blank" },
-            { kind: "comment", text: "after writing a unit that runs: localdrive serve" },
+            { kind: "comment", text: "writes the systemd unit, starts it, and checks it stayed up" },
           ]}
         />
+        <p className="mt-3 text-[14px] leading-[21px] text-fg-secondary">
+          No unit file to write by hand. Without root it installs a user unit
+          instead, so it works either way. It restarts on failure and comes back
+          after a reboot.
+        </p>
       </Step>
     </ol>
   );
@@ -406,6 +446,8 @@ function RunLinux() {
 const COMMANDS = [
   ["(none)", "Set up and start a server. What you run the first time."],
   ["init", "Write a working configuration without asking anything."],
+  ["install-path", "Make localdrive a command you can type anywhere."],
+  ["service", "Run in the background and start again after a reboot."],
   ["serve", "Run the server in the foreground, with no Docker."],
   ["start", "Start an already configured server."],
   ["stop", "Stop a running server."],
@@ -414,6 +456,8 @@ const COMMANDS = [
   ["logs", "Follow the server log."],
   ["backup", "Write a backup of the database and the library."],
   ["reset-admin", "Reset the admin password on an existing install."],
+  ["update", "Check for a newer release and install it."],
+  ["rollback", "Go back to the previous version."],
   ["version", "Print the version."],
 ];
 

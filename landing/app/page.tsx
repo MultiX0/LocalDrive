@@ -152,7 +152,7 @@ function OneCommand() {
           <div>
             <SectionLabel>Setup</SectionLabel>
             <h2 className="mt-4 text-[30px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[38px]">
-              Running in one command
+              One file, no configuration
             </h2>
             <p className="mt-5 max-w-md text-[15px] leading-[24px] text-fg-secondary">
               There is no configuration file to write first. On the first start
@@ -180,12 +180,17 @@ function OneCommand() {
                 id: "binary",
                 label: "The binary",
                 lines: [
-                  { kind: "command", text: "./localdrive" },
+                  // the released file is called "server", not "localdrive", and
+                  // a fresh download is not executable. showing anything else
+                  // sends people to a command that does not exist.
+                  { kind: "comment", text: "the file you downloaded is called server" },
+                  { kind: "command", text: "chmod +x server" },
+                  { kind: "command", text: "./server" },
                   { kind: "blank" },
                   { kind: "comment", text: "asks a few questions, then prints a QR code to scan" },
                   { kind: "output", text: "http://localhost:7443" },
                 ],
-                note: "All you need. Nothing to install, no service to register, and deleting the file uninstalls it.",
+                note: "On Windows, run server.exe instead. Nothing to install, no service to register, and deleting the file uninstalls it.",
               },
               {
                 id: "docker",

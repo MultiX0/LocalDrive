@@ -31,6 +31,18 @@ shapes real decisions:
 | Disk | Enough for your files, plus a little for the database and thumbnails |
 | OS | Linux for the full feature set, Windows or macOS for everything except drive management |
 
+Releases carry a binary for Linux on x86-64 and ARM64, and for Windows on
+x86-64. **There is no published macOS build.** The server compiles and runs on
+macOS, so it is supported, but a published build would be unsigned, and macOS
+quarantines an unsigned download so that the first run fails in a way that
+looks like broken software rather than like a missing signature. Building it
+yourself avoids that entirely:
+
+```
+cd server
+go build ./cmd/localdrive
+```
+
 ## Recommended
 
 | | |
