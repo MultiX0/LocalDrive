@@ -45,6 +45,58 @@ jobs:
       - name: Build
         run: go build ./cmd/localdrive
 
+  client:
+    name: Client analyze and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: localdrive
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      # the generated sources are gitignored, so a clean checkout does not
+      # analyse until they exist. this is not an optional convenience step.
+      - name: Generate
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  docs:
+    name: Documentation and site build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Dependencies
+        run: npm ci
+
+      # this build parses every file in docs/ and fails on an internal link
+      # that does not resolve. it is the only link checker the project has, so
+      # it runs on every change and not only on ones that touch the site.
+      - name: Build
+        run: npm run build
+
   vulncheck:
     name: Vulnerability scan
     runs-on: ubuntu-latest
@@ -71,7 +123,10 @@ jobs:
         run: docker build -t localdrive/server:ci -f Dockerfile .
 
       - name: Scan the image
-        uses: aquasecurity/trivy-action@master
+        # pinned to a release rather than a branch: an action referenced by a
+        # moving ref runs whatever that branch holds at the moment CI runs,
+        # which is somebody else's code with this workflow's permissions
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: localdrive/server:ci
           format: table

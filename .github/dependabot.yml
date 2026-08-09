@@ -1,0 +1,44 @@
+version: 2
+
+# Kept deliberately small. A dependency bot that opens fifteen pull requests a
+# week gets ignored, and an ignored bot is worse than none because it looks like
+# the dependencies are being watched. Monthly, grouped, and only where an update
+# is something somebody would actually act on.
+updates:
+  # The actions matter most. They execute with this repository's permissions,
+  # and an action left on an old major version is the one that quietly stops
+  # getting fixes. This is also what keeps the pinned refs from going stale.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
+
+  # The server's dependency set is small and deliberately so. govulncheck in CI
+  # already fails on a known vulnerability, so this is for staying current
+  # rather than for finding problems.
+  - package-ecosystem: gomod
+    directory: /server
+    schedule:
+      interval: monthly
+    groups:
+      go:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: server
+
+# Not enabled, on purpose:
+#
+#   npm for landing/    a Next.js dependency tree produces a great deal of noise
+#                       for a static marketing site that ships no user data.
+#   pub for localdrive/ Flutter pins are held in pubspec.lock and moving them
+#                       without running the app is how a client breaks silently.
+#
+# Both are updated by hand when there is a reason. Revisit if either starts
+# carrying something security sensitive.
