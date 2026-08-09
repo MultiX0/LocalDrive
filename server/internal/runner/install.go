@@ -219,6 +219,22 @@ func WriteEnvFile(path string, values map[string]string) error {
 	return os.WriteFile(path, []byte(b.String()), 0o600)
 }
 
+// maxLANAddresses caps how many are printed. A list is read; a wall is
+// skipped, and the useful line is the first one anyway.
+const maxLANAddresses = 3
+
+// virtualInterfaces are the name prefixes of interfaces that exist for
+// containers and virtual machines rather than for reaching this machine.
+//
+// A server with Docker, LXD or libvirt installed has several, each with a
+// gateway address the server does answer on, and none of which any person can
+// reach. Printing them buries the one address that works: a VPS with four
+// bridges offered eight addresses, six of them useless.
+var virtualInterfaces = []string{
+	"docker", "br-", "lxdbr", "lxcbr", "veth", "virbr", "vmnet", "vboxnet",
+	"cni", "flannel", "cali", "kube", "podman", "tun", "tap", "utun",
+}
+
 // LANAddresses returns every address this machine can be reached at, best
 // first. A self-hosted server is usually an address on the local network, not
 // a domain, so this is what the setup tool prints and what the app connects to.
@@ -241,6 +257,11 @@ func LANAddresses(port int, tls bool) []string {
 
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		// a tunnel is a link to one other place, not an address this machine
+		// is reached at on a network it belongs to
+		if iface.Flags&net.FlagPointToPoint != 0 || isVirtualInterface(iface.Name) {
 			continue
 		}
 		addrs, err := iface.Addrs()
@@ -273,13 +294,37 @@ func LANAddresses(port int, tls bool) []string {
 		}
 	}
 	sort.SliceStable(found, func(a, b int) bool { return found[a].rank < found[b].rank })
+	sawLocalNetwork := false
 	for _, c := range found {
+		if len(out) >= maxLANAddresses {
+			break
+		}
+		if c.rank < 2 {
+			sawLocalNetwork = true
+		}
 		out = append(out, c.address)
 	}
-	if host, err := os.Hostname(); err == nil && host != "" {
-		out = append(out, fmt.Sprintf("%s://%s.local:%d", scheme, host, port))
+
+	// An mdns name is answered by something on the local network, so it means
+	// nothing on a machine whose only address is a public one. A VPS is the
+	// case that matters: printing hostname.local there offers an address that
+	// resolves for nobody.
+	if sawLocalNetwork {
+		if host, err := os.Hostname(); err == nil && host != "" {
+			out = append(out, fmt.Sprintf("%s://%s.local:%d", scheme, host, port))
+		}
 	}
 	return out
+}
+
+func isVirtualInterface(name string) bool {
+	lower := strings.ToLower(name)
+	for _, prefix := range virtualInterfaces {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // PortAvailable reports whether this machine can bind that port right now.

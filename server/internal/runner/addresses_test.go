@@ -109,3 +109,49 @@ func assertAddresses(t *testing.T, got, want []string) {
 		}
 	}
 }
+
+// A server with Docker, LXD or libvirt installed has a bridge per virtual
+// network, each with a gateway address the server does answer on and none of
+// which any person can reach. A real VPS offered eight addresses, six of them
+// useless, which is a wall rather than a list.
+func TestVirtualInterfacesAreNotOfferedAsAddresses(t *testing.T) {
+	virtual := []string{
+		"docker0", "br-1a2b3c4d", "lxdbr0", "lxcbr0", "veth9f2a",
+		"virbr0", "vmnet1", "vboxnet0", "cni0", "flannel.1", "podman0",
+		"tun0", "tap0",
+	}
+	for _, name := range virtual {
+		if !isVirtualInterface(name) {
+			t.Errorf("%q is a virtual interface and would be printed as an address", name)
+		}
+	}
+
+	real := []string{"eth0", "enp3s0", "wlan0", "wlp2s0", "en0", "eno1", "Ethernet"}
+	for _, name := range real {
+		if isVirtualInterface(name) {
+			t.Errorf("%q is a real interface and would be hidden", name)
+		}
+	}
+}
+
+// Whatever this machine happens to have, the printed list has to stay short
+// enough to read, and must not claim an mdns name on a machine that has no
+// local network for one to resolve on.
+func TestTheAddressListStaysReadable(t *testing.T) {
+	got := LANAddresses(7443, false)
+
+	if len(got) > maxLANAddresses+1 {
+		t.Fatalf("printed %d addresses, want at most %d plus the .local name: %v",
+			len(got), maxLANAddresses, got)
+	}
+
+	local := 0
+	for _, address := range got {
+		if strings.Contains(address, ".local:") {
+			local++
+		}
+	}
+	if local > 1 {
+		t.Fatalf("more than one mdns name in %v", got)
+	}
+}

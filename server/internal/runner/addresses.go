@@ -51,7 +51,10 @@ func ServerAddresses(domain string, port int, kind TLSKind) []string {
 		out := []string{"https://" + domain}
 		if port != 443 {
 			out = append(out, fmt.Sprintf("https://%s:%d", domain, port))
-			// only the configured port sniffs the protocol; 443 is https alone
+			// only the configured port takes both protocols; 443 is https
+			// alone. these all work: on this machine's own networks they are
+			// served in the clear, and from the internet they redirect to the
+			// domain, so nothing is ever sent unencrypted across it.
 			out = append(out, LANAddresses(port, false)...)
 		}
 		return out
@@ -78,8 +81,9 @@ func AddressNote(domain string, kind TLSKind) string {
 	switch kind {
 	case TLSBuiltin:
 		return "Certificates are requested and renewed automatically, which needs ports\n" +
-			"  80 and 443 reachable. The domain is https and this machine's own\n" +
-			"  addresses are http, because a certificate only ever covers the name."
+			"  80 and 443 reachable. The domain is https. An address beside it is\n" +
+			"  plain http on your own network, and redirects to the domain from\n" +
+			"  anywhere else, because a certificate only ever covers the name."
 	case TLSProxy:
 		return "Caddy holds the certificate and renews it on its own."
 	}
