@@ -63,17 +63,14 @@ type Generator struct {
 	log     *slog.Logger
 	tempDir string
 
-	// onFFmpeg fires once, when a background fetch finally produces a working
-	// ffmpeg. Anything uploaded before that moment was skipped, so somebody
-	// has to go back for it.
+	// onFFmpeg fires when a background fetch produces a working ffmpeg
 	onFFmpeg func()
 }
 
 // OnFFmpegReady registers a callback for the moment video support appears.
 //
-// It fires only when ffmpeg arrives late, by download. When ffmpeg was already
-// on PATH at startup there was never a gap, so there is nothing to go back
-// for and nothing is called.
+// Only fires when ffmpeg arrives late. Already on PATH means there was no gap
+// and nothing to go back for.
 func (g *Generator) OnFFmpegReady(fn func()) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -111,9 +108,7 @@ func Probe(log *slog.Logger, tempDir string) *Generator {
 				arrived := g.onFFmpeg
 				g.mu.Unlock()
 				log.Info("video thumbnails enabled", "ffmpeg", found)
-				// Every video uploaded while this was downloading was skipped,
-				// and nothing would ever look at it again. Tell whoever asked
-				// so those can be picked up.
+				// anything uploaded during the download was skipped
 				if arrived != nil {
 					arrived()
 				}
@@ -143,9 +138,8 @@ func hasBytes(path string) bool {
 	return err == nil && info.Size() > 0
 }
 
-// FindFFmpeg reports an ffmpeg that is already installed, or "" if there is
-// none. Exported so setup can ask the same question the generator asks, using
-// the same search order, rather than keeping a second copy of it.
+// FindFFmpeg reports an already installed ffmpeg, or "". Exported so setup
+// asks with the same search order rather than keeping a second copy.
 func FindFFmpeg() string { return find("ffmpeg") }
 
 // find locates a helper on PATH, then beside the server binary.

@@ -1,14 +1,7 @@
-// Package sharepage renders the page somebody sees when they open a share
-// link without having the app.
+// Package sharepage renders what a browser gets when it opens a share link.
 //
-// A share link is the only part of Local Drive a stranger ever meets. Until
-// now it answered JSON, so opening one in a browser showed a wall of braces:
-// the file was there, the link worked, and it looked broken. This is the same
-// data with a face on it.
-//
-// It is server rendered with htmx for the parts that change, rather than an
-// application. A person following a link wants the file, not a bundle, and the
-// server already knows everything the page needs.
+// The same data the app receives as JSON, as a page. Server rendered, with
+// htmx for the parts that change.
 package sharepage
 
 import (
@@ -24,12 +17,8 @@ import (
 //go:embed page.html listing.html htmx.min.js
 var files embed.FS
 
-// Assets is htmx, served from this binary rather than a cdn.
-//
-// A self hosted server that pulls a script from someone else's domain tells
-// that someone the address of every person who opens a share link. The whole
-// point of this project is that nobody is in the middle, and that has to hold
-// for the one page strangers actually see.
+// Assets is htmx, vendored rather than loaded from a cdn: a cdn would learn
+// the address of everyone who opens a share link.
 var Assets, _ = files.ReadFile("htmx.min.js")
 
 var templates = template.Must(template.New("").Funcs(helpers).ParseFS(files, "*.html"))
@@ -53,8 +42,7 @@ type Item struct {
 	Thumb bool
 }
 
-// Data is everything the page needs. The handler fills it; the template makes
-// no decisions of its own beyond which branch to draw.
+// Data is everything the page needs.
 type Data struct {
 	// ServerName is what the operator called their server.
 	ServerName string
@@ -62,7 +50,7 @@ type Data struct {
 
 	// Item is what the link points at.
 	Item Item
-	// Owner is who shared it, by display name. Never an email or an account id.
+	// Owner is a display name. Never an email or an account id.
 	Owner string
 
 	AllowDownload bool
@@ -73,21 +61,49 @@ type Data struct {
 	NeedsPassword bool
 	Wrong         bool
 
-	// Gone covers a link that expired or never existed. Deliberately one state
-	// with one message: telling a stranger which of the two it is confirms
-	// that a token existed, which is information they did not have.
+	// Gone covers expired and never existed alike. Saying which confirms a
+	// token existed.
 	Gone bool
 
 	// Children and Trail are the folder view. Empty for a single file.
 	Children []Item
 	Trail    []Crumb
 
-	// Password is echoed back into links and forms so that navigating inside a
-	// protected folder does not ask for it again on every click.
+	// Password is echoed into links so navigating a protected folder does not
+	// ask again on every click.
 	Password string
+
+	// Preview is "image", "video", "audio" or empty. Only those three, because
+	// they are what a browser plays without help.
+	Preview string
+	// MediaURL is what the preview element loads, already carrying the
+	// password when the link has one.
+	MediaURL string
 
 	// BrandURL is where "what is this" goes.
 	BrandURL string
+}
+
+// PreviewKind reports how a browser can show this file in place, or "".
+//
+// Only the three it handles natively. A viewer that renders nothing is worse
+// than a download button.
+func PreviewKind(mimeType string) string {
+	mime := strings.ToLower(strings.TrimSpace(mimeType))
+	switch {
+	case strings.HasPrefix(mime, "image/"):
+		// svg is markup that the browser will execute, from a file somebody
+		// else uploaded, on this server's origin
+		if strings.Contains(mime, "svg") {
+			return ""
+		}
+		return "image"
+	case strings.HasPrefix(mime, "video/"):
+		return "video"
+	case strings.HasPrefix(mime, "audio/"):
+		return "audio"
+	}
+	return ""
 }
 
 // Crumb is one step in the path inside a shared folder.
@@ -122,12 +138,9 @@ func write(w http.ResponseWriter, status int, name string, data Data) {
 	}
 }
 
-// WantsHTML reports whether this request came from a browser rather than from
-// the app.
+// WantsHTML reports whether a browser is asking, rather than the app.
 //
-// The app asks for JSON explicitly. A browser sends an Accept header that
-// prefers html. Anything else, including curl with no Accept at all, keeps the
-// JSON it has always had, so nothing that already works changes.
+// Anything that does not prefer html keeps the JSON it has always had.
 func WantsHTML(r *http.Request) bool {
 	if r.Header.Get("HX-Request") != "" {
 		return true
@@ -174,9 +187,8 @@ func HumanTime(unix int64) string {
 	return time.Unix(unix, 0).UTC().Format("2 January 2006")
 }
 
-// glyphFor picks the outline drawn on a tile. Deliberately a small set: the
-// app has file type colours that mean something, and inventing a second
-// vocabulary here would make the two disagree.
+// glyphFor picks the outline drawn on a tile. A small set on purpose: the app
+// already has file type colours, and a second vocabulary would disagree.
 func glyphFor(item Item) string {
 	if item.Kind == "folder" {
 		return "folder"

@@ -53,9 +53,16 @@ in [Where your data lives](/self-hosting/where-your-data-lives).
 
 ### `setup`
 
-Interactive. Asks about five things, writes the configuration, starts the
-server, and creates the first admin account. This is what running `localdrive`
-with no command does.
+Interactive. Asks about five things, writes the configuration, fetches
+`ffmpeg` for video previews, offers to put itself on your PATH and to keep
+running after a reboot, then starts the server.
+
+The `ffmpeg` step happens here rather than later so that video previews work
+from the first upload rather than from whenever a background download finished.
+It is skipped when `ffmpeg` is already installed, and a failure costs previews
+and nothing else. See [Requirements](/self-hosting/requirements).
+
+This is what running `localdrive` with no command does.
 
 Use it the first time, on a machine you are sitting at.
 

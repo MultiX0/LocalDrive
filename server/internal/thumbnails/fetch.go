@@ -17,16 +17,11 @@ import (
 	"time"
 )
 
-// fetchAttempts and the backoff between them.
+// The gaps between retries. One attempt meant a server that started while the
+// network was settling gave up for the life of the process.
 //
-// One try was not enough. A server that comes up while the network is still
-// settling, or while the upstream host is having a bad minute, would give up
-// for the lifetime of the process and every video uploaded afterwards would
-// have no preview until somebody restarted it.
-//
-// The gaps grow, and each is scattered by up to a third of itself, so a
-// hundred servers that all started when the power came back do not knock on
-// the same door at the same second.
+// Each gap is scattered, so servers that rebooted together do not all arrive
+// in the same second.
 var fetchBackoff = []time.Duration{
 	15 * time.Second,
 	1 * time.Minute,
@@ -36,8 +31,7 @@ var fetchBackoff = []time.Duration{
 	3 * time.Hour,
 }
 
-// jitter spreads retries out. Deterministic sources are not needed here, and
-// crypto/rand would be a strange dependency for choosing a delay.
+// jitter spreads retries out.
 func jitter(d time.Duration) time.Duration {
 	spread := int64(d / 3)
 	if spread <= 0 {
@@ -46,10 +40,8 @@ func jitter(d time.Duration) time.Duration {
 	return d + time.Duration(rand.Int63n(spread))
 }
 
-// FetchWithRetry keeps trying until it has an ffmpeg that runs, then stops.
-//
-// It returns "" only when it has given up or been cancelled, so a caller can
-// treat a non-empty result as a tool it has already executed successfully.
+// FetchWithRetry keeps trying until it has an ffmpeg that runs. A non-empty
+// result has already been executed successfully.
 func FetchWithRetry(ctx context.Context, log *slog.Logger, dir string) string {
 	if log == nil {
 		log = slog.Default()
@@ -88,21 +80,11 @@ func FetchWithRetry(ctx context.Context, log *slog.Logger, dir string) string {
 // argue with the software about it.
 const FetchEnv = "LOCALDRIVE_FETCH_FFMPEG"
 
-// These downloads are not checked against a pinned checksum, and that is a
-// deliberate choice rather than an oversight.
-//
-// A pin needs a versioned artifact to pin to. The Linux builds are published
-// at a rolling "release" url whose contents change with every upstream
-// release, and the only digest beside them is md5. Pinning a hash to a url
-// that changes means video previews stop working, silently, on the day
-// upstream ships anything, which trades a small risk for a certainty of
-// breaking. The alternative sources checked have the same rolling shape.
-//
-// So the trust here is in the host and in TLS, the download is announced in
-// the log when it happens, and an operator who will not accept that has
-// FetchEnv to turn it off and install ffmpeg from their own distribution.
-// Recorded in docs/contributing/security-review.mdx so it stays a decision
-// somebody made rather than something nobody noticed.
+// No pinned checksum, on purpose. The Linux builds sit at a rolling url whose
+// contents change on every upstream release, with only an md5 beside them, so a
+// pin would silently break previews the day upstream ships. The trust is in TLS
+// and the host, the download is logged, and FetchEnv turns it off. Reasoned out
+// in docs/contributing/security-review.mdx.
 
 // where the builds come from, per platform. Static, so nothing here decides
 // at runtime what to download from where.
@@ -156,9 +138,7 @@ func FetchFFmpeg(ctx context.Context, log *slog.Logger, dir string) string {
 		target += ".exe"
 	}
 
-	// say where it comes from and that it is not checksum verified, so this is
-	// a visible trust decision rather than a silent one. LOCALDRIVE_FETCH_FFMPEG
-	// turns it off.
+	// name the source and admit it is unverified, so the trust is visible
 	log.Info("downloading ffmpeg for video previews, this happens once",
 		"from", build.url,
 		"checksum_pinned", false,

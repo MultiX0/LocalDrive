@@ -152,11 +152,8 @@ func New(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, error
 	})
 	filesSvc.SetThumbnailSupport(generator.Supports)
 
-	// The moment ffmpeg finishes downloading, go back for everything that was
-	// uploaded while it was missing. Without this a video uploaded in the first
-	// minute of a server's life keeps a type badge forever, while one uploaded
-	// a minute later gets a picture, which looks like the feature failing at
-	// random rather than a gap that closed.
+	// go back for whatever was uploaded while ffmpeg was missing, or a video
+	// from the server's first minute keeps a type badge forever
 	generator.OnFFmpegReady(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
@@ -278,14 +275,9 @@ func (a *App) registerScheduledJobs(
 		return nil
 	})
 
-	// A steady, small sweep for previews that are still missing.
-	//
-	// The callback when ffmpeg lands covers the common case. This covers the
-	// rest: a file whose first attempt failed on a busy machine, one uploaded
-	// during a restart, or a library that was offline when its turn came. A
-	// small batch on a long interval means a big library heals over hours
-	// instead of pinning the machine for one of them, and there is no burst
-	// where every server does the same work at the same moment.
+	// The callback above covers ffmpeg arriving. This covers the rest: a first
+	// attempt that failed, an upload during a restart, a library that was
+	// offline. Small batches, so a big library heals over hours.
 	a.Scheduler.Every("missing preview sweep", 30*time.Minute, 90*time.Second,
 		func(ctx context.Context) error {
 			queued, err := a.Files.BackfillThumbnails(ctx, 50)

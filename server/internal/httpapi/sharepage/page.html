@@ -9,13 +9,10 @@
 <script src="/s/assets/htmx.js" defer></script>
 <style>
 /*
-  The application's own surfaces, text and accents. Flat fills with a one pixel
-  border and no shadows anywhere, which is a decision in the app rather than an
-  omission here.
+  The app's own surfaces and accents. Flat fills, 1px borders, no shadows.
 
-  System fonts on purpose. A web font would mean asking a font host for it, and
-  that host would then learn the address of everybody who opens a share link
-  from a server that exists so nobody is in the middle.
+  System fonts on purpose: a web font host would learn the address of everyone
+  who opens a share link.
 */
 :root{
   --bg:#141414; --elevated:#202020; --sunken:#0E0E0E;
@@ -85,11 +82,21 @@ a:hover{text-decoration:underline}
   border:1px solid transparent;transition:background .28s var(--ease),border-color .28s var(--ease);
 }
 .btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8}
-.btn-primary{background:var(--accent);color:#0B1220;border-color:var(--accent)}
+/* white on the accent, the same as the app's primary button. Dark text on
+   this blue is hard to read at button weight. */
+.btn-primary{background:var(--accent);color:#FFFFFF;border-color:var(--accent)}
 .btn-primary:hover{background:#6BA2FF;text-decoration:none}
 .btn-quiet{background:transparent;color:var(--fg);border-color:var(--stroke)}
 .btn-quiet:hover{border-color:var(--fg-2);text-decoration:none}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ---------- inline preview ---------- */
+.preview{
+  margin-top:20px;border:1px solid var(--stroke);border-radius:var(--r-card);
+  background:var(--sunken);overflow:hidden;
+}
+.preview img,.preview video{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;background:#000}
+.preview audio{display:block;width:100%;padding:16px}
 
 .note{
   margin-top:18px;padding:12px 14px;border-radius:var(--r-field);
@@ -152,11 +159,7 @@ a:hover{text-decoration:underline}
 <div class="wrap">
 
   <div class="top">
-    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z"
-            fill="#4C8DFF" stroke="none"/>
-      <circle cx="11" cy="13.5" r="2.6" fill="none" stroke="#141414" stroke-width="1.6"/>
-    </svg>
+    {{template "mark"}}
     <div class="brand">{{.ServerName}} <span>· shared with you</span></div>
   </div>
 
@@ -225,6 +228,21 @@ a:hover{text-decoration:underline}
       </div>
     </div>
 
+    {{/* Pictures, video and audio play in place. Everything else keeps its
+         card: a viewer that renders nothing is worse than none. */}}
+    {{if .Preview}}
+    <div class="preview">
+      {{if eq .Preview "image"}}
+        <img src="{{.MediaURL}}" alt="{{.Item.Name}}" loading="lazy">
+      {{else if eq .Preview "video"}}
+        <video src="{{.MediaURL}}" controls preload="metadata"
+               {{if .Item.Thumb}}poster="/s/{{.Token}}/thumbnail{{if .Password}}?password={{.Password}}{{end}}"{{end}}></video>
+      {{else if eq .Preview "audio"}}
+        <audio src="{{.MediaURL}}" controls preload="metadata"></audio>
+      {{end}}
+    </div>
+    {{end}}
+
     {{if not (isFolder .Item.Kind)}}
     <div class="actions">
       {{if .AllowDownload}}
@@ -261,6 +279,18 @@ a:hover{text-decoration:underline}
 
 </body>
 </html>{{end}}
+
+{{define "mark"}}
+{{- /* Same geometry as docs/assets/mark.svg. Inline, so there is no second
+       request and nothing to go missing. */ -}}
+<svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <path d="M10 12 L24 12 L29 18 L54 18 Q58 18 58 22 L58 46 Q58 50 54 50 L10 50 Q6 50 6 46 L6 16 Q6 12 10 12 Z" fill="#2A6FD6"/>
+  <path d="M14 21 L50 21 Q52 21 52 23 L52 44 L12 44 L12 23 Q12 21 14 21 Z" fill="#DCE3EE"/>
+  <path d="M10 26 L54 26 Q58 26 58 30 L58 46 Q58 50 54 50 L10 50 Q6 50 6 46 L6 30 Q6 26 10 26 Z" fill="#4C8DFF"/>
+  <path d="M25.5 41.5 A8 8 0 1 1 38.5 41.5" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="38" r="3.2" fill="#FFFFFF"/>
+</svg>
+{{end}}
 
 {{define "glyph"}}
 {{- if eq . "folder"}}<svg viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z"/></svg>

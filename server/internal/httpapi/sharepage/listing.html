@@ -1,9 +1,6 @@
 {{define "listing.html"}}
-{{- /*
-  The contents of a shared folder, swapped in on its own when somebody opens a
-  subfolder. Being a separate template is the whole reason a click inside a
-  share replaces one box rather than reloading the page.
-*/ -}}
+{{- /* Swapped in on its own, so opening a subfolder replaces this box
+       rather than reloading the page. */ -}}
 <div class="trail">
   {{range $i, $c := .Trail}}
     {{if $i}}<span class="sep">/</span>{{end}}

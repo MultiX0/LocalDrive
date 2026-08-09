@@ -960,15 +960,11 @@ func (s *Service) scheduleThumbnail(node models.Node) {
 
 // BackfillThumbnails queues previews for files that never got one.
 //
-// Video previews need ffmpeg, and ffmpeg may arrive minutes after the server
-// did, by download. Anything uploaded in that window was skipped once and, up
-// to now, was never looked at again: the file kept a type badge for the rest of
-// its life while every video uploaded afterwards got a picture. That reads as
-// the feature being broken, because from the outside it is.
+// ffmpeg can arrive minutes after the server does. A video uploaded in that
+// window was skipped once and, before this, never looked at again.
 //
-// Bounded on purpose. A library with ten thousand videos should not turn a
-// restart into an hour of full tilt transcoding, so this takes a batch and the
-// caller comes back for more.
+// Bounded: ten thousand videos should not turn a restart into an hour of
+// transcoding, so the caller comes back for the next batch.
 func (s *Service) BackfillThumbnails(ctx context.Context, limit int) (int, error) {
 	if s.thumbnailer == nil {
 		return 0, nil
@@ -1000,8 +996,7 @@ func (s *Service) BackfillThumbnails(ctx context.Context, limit int) (int, error
 			return queued, err
 		}
 		node.Type = models.NodeFile
-		// asking about a file nothing can render would queue a job that fails
-		// on every pass, forever
+		// a file nothing can render would fail on every pass, forever
 		if s.thumbnailSupported != nil && !s.thumbnailSupported(node.MimeType) {
 			continue
 		}
@@ -1011,8 +1006,8 @@ func (s *Service) BackfillThumbnails(ctx context.Context, limit int) (int, error
 	return queued, rows.Err()
 }
 
-// SetThumbnailSupport lets the wiring say which types can be rendered right
-// now, which changes when ffmpeg appears.
+// SetThumbnailSupport says which types can be rendered right now. The answer
+// changes when ffmpeg appears.
 func (s *Service) SetThumbnailSupport(fn func(mime string) bool) {
 	s.thumbnailSupported = fn
 }

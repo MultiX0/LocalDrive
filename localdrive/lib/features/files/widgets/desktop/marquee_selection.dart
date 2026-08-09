@@ -25,10 +25,8 @@ class MarqueeSelection extends StatefulWidget {
 
   final Widget child;
 
-  /// A click on empty space that never became a drag.
-  ///
-  /// Every file manager treats this as "never mind", and without it the only
-  /// way out of a selection is finding the small close button on the bar.
+  /// A click on empty space that never became a drag, which every file
+  /// manager treats as "never mind".
   final VoidCallback? onEmptyTap;
 
   /// the ids the box currently covers, sent on every move so the tiles light
@@ -92,10 +90,8 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
   Offset? _to;
   bool _additive = false;
 
-  /// Whether this press travelled far enough to be a drag rather than a click.
-  ///
-  /// A mouse moves a pixel or two while the button goes down, so an exact
-  /// comparison would call almost every click a drag.
+  /// Whether this press travelled far enough to be a drag. A mouse moves a
+  /// pixel or two as the button goes down.
   bool _dragged = false;
   static const double _slop = 4;
 
@@ -123,8 +119,7 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
   void _update(Offset global) {
     if (!_dragged && (global - _from!).distance > _slop) _dragged = true;
     setState(() => _to = global);
-    // nothing is selected or deselected until the press is actually a drag,
-    // so a plain click does not wipe the selection through this path
+    // a plain click must not wipe the selection through this path
     if (!_dragged) return;
     final rect = _rect;
     if (rect != null) widget.onChanged(_registry.hits(rect), _additive);
@@ -175,8 +170,7 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
         },
         onPointerUp: (_) {
           if (_from == null) return;
-          // a click on nothing means "never mind". Ctrl is excluded because
-          // holding it is how someone adds to a selection, not clears it.
+          // ctrl is excluded: holding it adds to a selection
           final clear = !_dragged && !_additive;
           _end();
           if (clear) widget.onEmptyTap?.call();

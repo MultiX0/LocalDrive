@@ -9,9 +9,8 @@ import (
 	"time"
 )
 
-// A tls record opens with the handshake content type. A plain http request
-// opens with a method, which is a letter. One byte separates them, and that is
-// the whole trick that lets a single port answer both.
+// A tls record opens with the handshake content type; an http request opens
+// with a letter. One byte tells them apart.
 const tlsRecordHandshake = 0x16
 
 // peekTimeout bounds how long a connection may stay silent before it is
@@ -19,15 +18,11 @@ const tlsRecordHandshake = 0x16
 // goroutine and a file descriptor for as long as it likes.
 const peekTimeout = 20 * time.Second
 
-// bothProtocols is a listener that answers https and plain http on one port.
+// bothProtocols answers https and plain http on one port.
 //
-// A server with a domain holds a certificate for that name and no other, so
-// https to its ip address cannot work: the handshake is refused before a
-// request is ever sent, and no authority will issue a certificate for
-// 192.168.x.x to change that. Without this, setting a domain would quietly
-// take away every way of reaching the server by address, which is how a phone
-// on the same wifi gets to it. Sniffing the first byte lets the name keep its
-// certificate while an address on the network keeps a route that works.
+// A certificate covers the domain and never an address, so https to an ip is
+// refused during the handshake. Without this, setting a domain would remove
+// every way of reaching the server from the same network.
 type bothProtocols struct {
 	inner  net.Listener
 	config *tls.Config
@@ -71,9 +66,8 @@ func (l *bothProtocols) accept() {
 			}
 			return
 		}
-		// deciding which protocol this is means reading from the connection, so
-		// it cannot happen here: one silent client would stop the server
-		// accepting anything else at all
+		// classifying reads from the connection, so it cannot happen here: one
+		// silent client would stop the server accepting anyone
 		go l.classify(conn)
 	}
 }

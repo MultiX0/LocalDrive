@@ -40,6 +40,35 @@ only, so a slow sweep never leaves an expired link working.
 
 Every access is written to the activity log.
 
+### What the other person sees
+
+Opening the link in a browser gives a page, not an application and not a
+wall of JSON. It shows the file, its size, who shared it, and when the link
+stops working, in the same colours and shapes as the app.
+
+Pictures, video and audio play **in the page**. Those three and no others,
+because a browser handles them without help; a viewer offered for a spreadsheet
+would render nothing, which is worse than an honest download button. Anything
+else shows its type and a download.
+
+A shared folder can be walked. Opening a subfolder replaces the listing rather
+than reloading the page, and the path back is one click.
+
+A link that needs a password asks for one. A link that has expired, or never
+existed, gets the same short "not available" page for both, since telling a
+stranger which of the two it was answers a question they should not be able to
+ask.
+
+The page is served by the server itself and needs nothing installed. It loads
+no fonts, scripts or images from anywhere else, so opening a share link tells
+nobody but that server that it happened. Whoever opens it also gets a link to
+the apps, so a stranger meeting the project for the first time can find out
+what it is.
+
+A **view only** link has no in-page player, for the same reason it has no
+download button: the bytes come from the same place, and streaming them would
+be a second door to a file the link exists to withhold.
+
 ## Nearby
 
 While the share sheet is open, the app advertises a small presence beacon over

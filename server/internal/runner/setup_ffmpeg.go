@@ -13,17 +13,13 @@ import (
 	"github.com/MultiX0/LocalDrive/server/internal/thumbnails"
 )
 
-// setupFFmpeg gets video previews working before the server ever serves a
-// request, and says out loud what it is doing.
+// setupFFmpeg gets video previews working before the server serves anything.
 //
-// The alternative, which is what used to happen, is that the server starts,
-// somebody uploads a video in the first minute, and it has no preview because
-// the download was still in flight. That reads as a broken feature rather than
-// as a gap that closes.
+// Doing it here means the first upload already has previews, rather than
+// whenever a background download happened to finish.
 //
-// Everything here is optional. A failure costs video previews and nothing
-// else, so it reports and carries on rather than stopping a setup that has
-// already written a working configuration.
+// Optional. A failure costs previews and nothing else, so it says so and
+// carries on.
 func setupFFmpeg() {
 	setupStep("Video previews")
 
@@ -45,8 +41,7 @@ func setupFFmpeg() {
 	fmt.Println("    Downloading ffmpeg so videos get a preview picture. Once,")
 	fmt.Println("    about thirty megabytes. Nothing else needs it.")
 
-	// The fetch logs at info level and setup is a conversation, not a log
-	// stream, so its output goes nowhere and the result is reported here.
+	// setup is a conversation, not a log stream
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -61,8 +56,8 @@ func setupFFmpeg() {
 	fmt.Println("    time, and goes back for anything uploaded meanwhile.")
 }
 
-// installDirForFFmpeg is the directory beside this binary, which is where the
-// generator looks after PATH.
+// installDirForFFmpeg is beside this binary, where the generator looks after
+// PATH.
 func installDirForFFmpeg() string {
 	exe, err := os.Executable()
 	if err != nil {

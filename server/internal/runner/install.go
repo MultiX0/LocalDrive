@@ -223,13 +223,9 @@ func WriteEnvFile(path string, values map[string]string) error {
 // skipped, and the useful line is the first one anyway.
 const maxLANAddresses = 3
 
-// virtualInterfaces are the name prefixes of interfaces that exist for
-// containers and virtual machines rather than for reaching this machine.
-//
-// A server with Docker, LXD or libvirt installed has several, each with a
-// gateway address the server does answer on, and none of which any person can
-// reach. Printing them buries the one address that works: a VPS with four
-// bridges offered eight addresses, six of them useless.
+// virtualInterfaces belong to containers and virtual machines rather than to
+// reaching this machine. A VPS with four bridges offered eight addresses, six
+// of them unreachable.
 var virtualInterfaces = []string{
 	"docker", "br-", "lxdbr", "lxcbr", "veth", "virbr", "vmnet", "vboxnet",
 	"cni", "flannel", "cali", "kube", "podman", "tun", "tap", "utun",
@@ -305,10 +301,8 @@ func LANAddresses(port int, tls bool) []string {
 		out = append(out, c.address)
 	}
 
-	// An mdns name is answered by something on the local network, so it means
-	// nothing on a machine whose only address is a public one. A VPS is the
-	// case that matters: printing hostname.local there offers an address that
-	// resolves for nobody.
+	// an mdns name resolves for nobody on a machine whose only address is
+	// public, which is what a VPS is
 	if sawLocalNetwork {
 		if host, err := os.Hostname(); err == nil && host != "" {
 			out = append(out, fmt.Sprintf("%s://%s.local:%d", scheme, host, port))

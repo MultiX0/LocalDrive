@@ -70,9 +70,19 @@ the folder if it moves.
 ### Fetching ffmpeg automatically
 
 When `ffmpeg` is missing on Windows or Linux, the server downloads a build for
-its own platform and puts it beside the binary. It happens once, in the
-background, so the server answers requests immediately while it runs, and the
-download is verified by running it before anything is allowed to use it.
+its own platform and puts it beside the binary. The download is verified by
+running it, so a truncated file or the wrong architecture is caught before
+anything depends on it.
+
+`localdrive setup` does this while you are still sitting in front of it, which
+is the one moment a download is not a surprise. A server that reaches `serve`
+without one fetches in the background instead, so it answers requests
+immediately rather than making a first run wait.
+
+If that download fails it is tried again, with the gap growing each time,
+starting at fifteen seconds and ending at three hours. Each gap is scattered by
+up to a third of itself, so a room full of servers that all came back after a
+power cut do not knock on the same door at the same second.
 
 Set `LOCALDRIVE_FETCH_FFMPEG=false` to switch this off. Fetching an executable
 at runtime is something some operators will forbid outright, and that should be
@@ -86,6 +96,11 @@ broken app rather than a missing tool. Install it with Homebrew there:
 brew install ffmpeg
 ```
 
-Thumbnails are made when a file is uploaded, so anything already on the server
-from before `ffmpeg` arrived keeps its type badge. Upload it again to get a
-preview.
+Thumbnails are made when a file is uploaded, so a video that arrives while
+`ffmpeg` is still downloading has no preview at that moment. It does not stay
+that way: when `ffmpeg` becomes usable the server goes back for everything that
+was skipped, and a sweep every thirty minutes picks up anything else that has
+no preview, in small batches so a large library heals over hours instead of
+pinning the machine for one of them.
+
+Nothing has to be re-uploaded, and nothing has to be restarted.

@@ -34,12 +34,10 @@ class FilesBrowser extends ConsumerWidget {
   final VoidCallback? onEmptyAction;
   final LdGlyph emptyGlyph;
 
-  /// Room to leave at the top for something floating over the listing.
+  /// Room for something floating over the listing.
   ///
-  /// The desktop selection bar hovers above the grid so that selecting a file
-  /// never resizes the listing and reflows the tiles. Hovering means it covers
-  /// the first row unless that row is pushed out from under it, and a file you
-  /// cannot see is worse than one that moved.
+  /// The desktop selection bar hovers so that selecting never reflows the
+  /// tiles. Without this the first row sits underneath it.
   final double topInset;
 
   @override
