@@ -1,0 +1,87 @@
+---
+title: AI agents
+description: How AI coding agents are expected to work in this repository.
+sidebar_position: 7
+---
+
+# AI agents
+
+AI coding agents write code in this repository. That is treated as normal, and
+it is governed rather than either banned or trusted.
+
+The instructions themselves live beside the code, not here, because that is
+where an agent will actually read them. This page explains the arrangement and
+who it is for.
+
+## Where the instructions live
+
+| File | Holds |
+| --- | --- |
+| [`AGENTS.md`](https://github.com/MultiX0/LocalDrive/blob/main/AGENTS.md) | How to work here. Read this first. |
+| [`VISION.md`](https://github.com/MultiX0/LocalDrive/blob/main/VISION.md) | Why the project makes its choices, and how to judge whether a change belongs. |
+| `server/AGENTS.md` | Local rules for the Go server. |
+| `localdrive/AGENTS.md` | Local rules for the Flutter client. |
+| `docs/AGENTS.md` | Local rules for the documentation. |
+| `landing/AGENTS.md` | Local rules for the website. |
+| [`.ai/project.json`](https://github.com/MultiX0/LocalDrive/blob/main/.ai/project.json) | Machine readable facts: paths, commands, public contracts. |
+| [`.ai/skills/`](https://github.com/MultiX0/LocalDrive/tree/main/.ai/skills) | Playbooks for specific kinds of task. |
+
+Read the root file, then the one nearest the code being changed. The scoped
+files hold local rules only and do not repeat the root.
+
+## The position
+
+**Agents are contributors. Humans are maintainers.** An agent proposes a
+change. A person owns the architecture and decides what is merged. That
+division is deliberate and is not a formality.
+
+**Vendor neutrality is a requirement, not a preference.** Every instruction file
+is plain Markdown that any tool can read. Nothing in the build, the tests, the
+release or the contribution process depends on a particular AI product. Delete
+the `.ai/` directory and every `AGENTS.md`, and the project builds, tests and
+releases exactly as before.
+
+Where a tool insists on its own filename, the answer is a one line file that
+points at the neutral one rather than a second copy of the rules that will
+drift.
+
+## What is expected
+
+The same as any contributor, with two additions that matter more for an agent
+than for a person.
+
+**Inspect before editing.** The most expensive failure mode here is a second
+implementation built beside the one that already exists, because it passes
+review by looking self-consistent.
+
+**Never claim a check passed without running it.** A fabricated result is worse
+than no result: it costs the reviewer their trust in everything else in the
+change, including the parts that were fine. "I could not run the Flutter tests,
+there is no SDK on this machine" is a useful sentence and a normal one.
+
+Uncertainty gets reported rather than resolved by guessing. A confident wrong
+answer is the expensive kind.
+
+## For reviewers
+
+A change proposed by an agent is reviewed like any other, with attention to the
+things that are cheap for a model to get subtly wrong:
+
+- An abstraction that duplicates one already in the repository.
+- A test that asserts the implementation rather than the behaviour, and would
+  pass whatever the code did.
+- Documentation updated to match the change rather than the software.
+- A dependency added to solve something the repository already solves.
+- Confident wording around a claim that was never verified.
+
+The checks are the same for everyone:
+
+```
+cd server     && go test ./... && go vet ./...
+cd localdrive && flutter analyze && flutter test
+cd landing    && npm run build
+```
+
+See [Testing](/contributing/testing) for what belongs at which layer, and
+[Security review](/contributing/security-review) for what to check before
+merging something that touches permissions, paths or uploads.

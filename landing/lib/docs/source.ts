@@ -106,12 +106,21 @@ async function walk(dir: string): Promise<string[]> {
     // assets/ holds the mark, not prose
     if (entry.isDirectory() && entry.name !== "assets") {
       found.push(...(await walk(full)));
-    } else if (entry.isFile() && /\.mdx?$/.test(entry.name)) {
+    } else if (
+      entry.isFile() &&
+      /\.mdx?$/.test(entry.name) &&
+      !NOT_A_PAGE.has(entry.name)
+    ) {
       found.push(full);
     }
   }
   return found;
 }
+
+// Instructions for people and tools working on the documentation, which live
+// beside it on purpose. They are not pages and have no frontmatter, so without
+// this the build fails on a missing title.
+const NOT_A_PAGE = new Set(["AGENTS.md", "CLAUDE.md", "README.md"]);
 
 export async function getDoc(slug: string): Promise<Doc | null> {
   const docs = await getDocs();

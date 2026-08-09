@@ -1,0 +1,163 @@
+---
+title: Security review
+description: What to check before merging, and the concerns currently open.
+sidebar_position: 5
+---
+
+# Security review
+
+This page is for someone reviewing a change, and for anyone who wants to know
+what the project currently considers unresolved.
+
+To **report** a vulnerability, do not use this page. Follow
+[the security policy](https://github.com/MultiX0/LocalDrive/blob/main/SECURITY.md),
+which explains the private channel and what to expect.
+
+For the permission model itself, see [Security](/architecture/security).
+
+## Reviewing a change
+
+Start with a threat, not a checklist. What would an attacker gain here?
+Reading another account's files, taking over an account, running code on the
+server, or destroying data. A review with no threat in mind is a style review.
+
+Then check the areas the change actually touches.
+
+### Authorisation
+
+- The decision is made in the domain package, not in the handler. `files.Require`
+  returns `ErrForbidden` and the handler only turns that into a 403. A handler
+  that inspects a role and decides for itself has hidden a security decision
+  where nobody will look for it again.
+- The check uses the caller's account id, never an id taken from the request
+  body.
+- There is a test asserting a **different** account is refused. Missing that
+  test is itself the finding.
+- An administrator does not gain the ability to read another account's file
+  contents. Admin is not a master key, and that is a product rule rather than
+  an implementation detail.
+
+### Paths and filenames
+
+Every user supplied string that becomes part of a filesystem path goes through
+`pkg/pathsafe`. There is no exception worth making: the process can read the
+whole disk, and the caller chose the name.
+
+Worth trying by hand: `..`, an absolute path, a symlink, a trailing dot on
+Windows, a null byte, and a name that is legal on one platform and not another.
+
+### Uploads, downloads and sharing
+
+- Request bodies are capped.
+- A resumable upload cannot be resumed by an account that did not start it.
+- A share link grants exactly the object it names, and nothing beside it.
+
+### Secrets and logging
+
+- Secrets are generated per install. There is no default credential anywhere in
+  the project, including in examples and tests, because examples get copied.
+- No password, token, session id or key appears in a log line, in an error that
+  reaches a client, or in a crash report.
+- Nothing credential-shaped is committed. `.gitignore` already covers `.env`
+  files, keystores and `key.properties`.
+
+### Subprocesses and downloads
+
+- Arguments are passed as a slice, never assembled into a shell string. The
+  repository does not invoke a shell anywhere, and it should stay that way.
+- Anything downloaded and then executed is verified against a checksum or a
+  signature. HTTPS proves who served a file, not what is in it.
+
+### Dependencies and workflows
+
+- A new dependency needs a reason, and must not require cgo. The single binary
+  property is what the project is for.
+- GitHub Actions are pinned to a release tag. An action referenced by a moving
+  branch runs whatever that branch contains at the moment the workflow runs.
+
+## What CI checks
+
+- `govulncheck` against the Go module.
+- A container image build and a Trivy scan, failing on high and critical.
+- `go vet`, and the full test suite under the race detector.
+
+These are a floor, not a review. None of them will notice a missing permission
+check.
+
+## Accepted risks
+
+Recorded here rather than left implicit. An unstated gap is worse than a stated
+one, and each of these is a decision somebody made rather than something nobody
+noticed.
+
+### The optional ffmpeg download is not checksum verified
+
+`server/internal/thumbnails/fetch.go` downloads an `ffmpeg` build over HTTPS
+from a third-party host and then executes it. It runs automatically when
+`ffmpeg` is missing and video previews are wanted, and can be turned off with
+the environment variable named in that file.
+
+The existing `verify` step runs the binary and checks it identifies itself as
+ffmpeg. That catches a truncated download or the wrong architecture. It does
+not catch a substituted binary, because it is an integrity check against
+accident rather than against tampering.
+
+The consequence, if an upstream release or host were compromised, is code
+execution as the server user on installs that fetch it.
+
+This is inconsistent with how the project treats its own updates:
+`localdrive update` verifies downloads against the published `SHA256SUMS`.
+
+**The decision is to keep it, and to make the trust visible rather than pin a
+hash.** A pin needs something stable to pin to, and the available sources do
+not offer one:
+
+- The Linux builds are published at a rolling `ffmpeg-release-*-static.tar.xz`
+  url whose contents change with every upstream release. The only digest
+  published beside them is md5, which is not a defence against a chosen
+  substitution.
+- The obvious alternative, the widely used GitHub build set, publishes on a
+  `latest` tag with the same rolling shape.
+
+Pinning a hash to a url that changes on upstream's schedule means video
+previews break silently on the day upstream ships anything, for every new
+install, until somebody notices and updates a constant. That trades a small
+risk for a near certainty of breakage, and the failure is invisible.
+
+So instead: the download is announced in the log with the source url and
+`checksum_pinned=false`, and `LOCALDRIVE_FETCH_FFMPEG=false` turns it off for
+any operator who will not accept a runtime download. The feature degrades
+cleanly to a type badge on videos, and installing `ffmpeg` from a distribution
+package gets it back with the distribution's own signing behind it.
+
+Revisit this if a versioned, checksum-published static build appears upstream.
+
+### No macOS build is published
+
+Not a vulnerability, but it is a supply chain decision, so it belongs here.
+
+The server compiles and runs on macOS and there is no published binary for it.
+Publishing one would mean publishing an unsigned executable, which macOS
+quarantines: the first run fails in a way that reads as broken software, and
+the usual response is to search for a workaround, which is exactly the habit
+that gets people running binaries from wherever.
+
+Building from source on macOS is two commands and carries no such problem, so
+that is what [Requirements](/self-hosting/requirements) tells a Mac user to do.
+
+Revisit this if the project ever has an Apple Developer identity to sign and
+notarise with. Publishing an unsigned build before then would create the
+confusion it is meant to save people from.
+
+## When you find something
+
+If it is a live vulnerability in shipped code, stop. Do not open a public issue
+or a pull request whose diff explains how to exploit it. Use the private
+channel in the security policy.
+
+If a fix would break a workflow, report both. Never weaken the check to keep
+the workflow, and never remove the test that noticed.
+
+If you are unsure whether something is exploitable, write it down as uncertain
+along with what you checked. A stated concern that turns out to be nothing
+costs a few minutes. A dropped one can cost a great deal more.

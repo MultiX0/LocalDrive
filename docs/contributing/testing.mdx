@@ -1,0 +1,164 @@
+---
+title: Testing
+description: The layers, what belongs in each, and how to run them.
+sidebar_position: 4
+---
+
+# Testing
+
+The thing being protected is data somebody cannot regenerate. That sets the
+priority: a test earns its place by covering a workflow where a person could
+lose a file or see one that is not theirs, not by moving a coverage number.
+
+## Running everything
+
+```
+cd server     && go test -race -count=1 ./...
+cd localdrive && flutter analyze && flutter test
+cd landing    && npm run build
+```
+
+The race detector is not optional on the server. Uploads are resumable and
+clients retry, so requests genuinely do arrive concurrently, and a failure that
+appears only under `-race` is a real bug rather than a flaky test.
+
+The landing build is the documentation test. It parses every file in `docs/`
+and fails on an internal link that does not resolve.
+
+## The layers
+
+### Unit
+
+One package, no database, no network. The rules of a thing in isolation.
+
+Examples in the repository: `pkg/pathsafe` for path handling, and
+`internal/config` for secret generation.
+
+Reach for this when the logic has interesting edges. Path handling has a great
+many.
+
+### Integration
+
+Several packages together, against a real SQLite database and the real HTTP
+surface. These live in `server/internal/app`, built on the harness in
+`harness_test.go`.
+
+This is the right place for most server behaviour, because it exercises what a
+client would actually receive: routing, middleware, the service layer and the
+error envelope together.
+
+**Permission tests belong here.** For any endpoint that returns an object, there
+should be a test asserting that a different account is refused. That is the
+single most valuable kind of test in this project.
+
+### API
+
+The HTTP contract itself: status codes, the shape of the error envelope, field
+names. Also written as integration tests, but the assertion is about the
+contract rather than the behaviour behind it.
+
+A response shape is a public contract. A test that pins it is what turns an
+accidental rename into a failing build instead of a broken client.
+
+### Widget and unit, on the client
+
+`localdrive/test/`. Widget tests pump a widget and assert on what is rendered.
+
+Useful patterns already in the repository: rendering rules, routing tables,
+selection behaviour, local database access, and a test that enforces a minimum
+touch target size.
+
+When you fix a UI bug, the regression test is usually a widget test.
+
+### End to end
+
+A built server and a built client, driven as a user would drive them. This is
+the layer the repository does not have yet. See
+[Where end-to-end tests go](#where-end-to-end-tests-go).
+
+### Regression
+
+Not a separate place. Every bug fix adds a test at whichever layer reproduces
+it, and that test stays. If a bug was worth fixing, it is worth not having
+twice.
+
+### Security
+
+Not a separate place either. Permission tests are integration tests. What makes
+them security tests is that they assert a refusal rather than a success.
+
+## What must not break
+
+Roughly in order. If time is short, this is the order to spend it in.
+
+1. A user does not lose a file. Upload, download, versions, trash, restore.
+2. A user cannot read another user's file. Every endpoint that names an object.
+3. An interrupted upload can be resumed, and cannot be resumed by someone else.
+4. A backup restores.
+5. An update that fails rolls back, and one that succeeds comes back on the new
+   version.
+6. Authentication holds: sessions, device approval, the second factor.
+
+## What not to test
+
+- Getters, and code with no decision in it.
+- Generated code. `*.g.dart` is the generator's responsibility.
+- Behaviour that does not exist yet. A test for a planned feature is a failing
+  build, not a specification.
+- Third party libraries. Test how this project uses them, not that they work.
+
+## Where end-to-end tests go
+
+There is no end-to-end suite yet. When one is added, it goes in `e2e/` at the
+repository root, outside both `server/` and `localdrive/`, because it exercises
+them together and belongs to neither.
+
+The intended shape:
+
+```
+e2e/
+  fixtures/     files and accounts a run starts from
+  scenarios/    one directory per workflow under test
+  README.md     how to start an environment and run against it
+```
+
+Two properties matter more than the choice of tool:
+
+- **A run starts from a known, disposable environment.** A fresh install, a
+  fresh database, fixed fixtures. A suite that depends on the state left by the
+  last run is a suite that will be deleted within a year.
+- **It runs against built artifacts**, the server binary and a built client,
+  not against source. That is the point of the layer: it tests what is
+  shipped.
+
+Where it sits in the order:
+
+```
+unit  ->  integration  ->  api  ->  build  ->  environment  ->  end to end  ->  release
+```
+
+End-to-end runs after a build has produced something to run, and before a
+release is treated as good. It is the slowest and least specific layer, so it
+covers whole workflows rather than edge cases. Edge cases stay in the layers
+above, where a failure points at a line instead of a screen.
+
+Whatever tool is chosen, the repository must remain complete without it. The
+project does not depend on a testing vendor, and a contributor who cannot run
+the end-to-end suite must still be able to run everything else.
+
+## Writing a test that is worth having
+
+- **Make it fail first.** A test that was never red proves nothing.
+- **Name the behaviour, not the function.**
+  `TestTOTPLetsANewDeviceInWithoutApproval` says what is protected.
+  `TestLogin2` does not.
+- **Assert on what a user or a client would see**, not on internal state.
+- **One reason to fail.** A test that covers four things tells you least when
+  it goes red.
+- **No sleeps.** Wait for a condition.
+
+## When a test fails
+
+A failing test is a finding. Never delete it, skip it, or loosen its assertion
+to get a green build. If it is genuinely wrong, fix the test in its own change
+and say why it was wrong.

@@ -47,10 +47,12 @@ One file, no runtime and nothing to install. Grab `server` for Linux or
 [the latest release](https://github.com/MultiX0/LocalDrive/releases/latest),
 and rename it to `localdrive` if you like.
 
+There is no published macOS build yet. The server does run on macOS, so on a
+Mac build it from source with `cd server && go build ./cmd/localdrive`.
+
 ### 2. Start it
 
-On Linux and macOS, a fresh download is not executable yet, so allow it to run
-first:
+On Linux, a fresh download is not executable yet, so allow it to run first:
 
 ```
 chmod +x ./server
@@ -226,7 +228,10 @@ Start with [Architecture overview](docs/architecture/overview.mdx) and
 
 | | |
 | --- | --- |
+| [Vision](VISION.md) | Why the project exists, what it refuses to become, and how to judge whether a change belongs. |
 | [Contributing](CONTRIBUTING.md) | How to get it running and what makes a change easy to accept. |
+| [Testing](docs/contributing/testing.mdx) | The layers, what belongs in each, and what must not break. |
+| [Security review](docs/contributing/security-review.mdx) | What to check before merging, and the concerns currently open. |
 | [Code of conduct](CODE_OF_CONDUCT.md) | Be decent to people. |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately, and what is in scope. |
 | [Disclaimer](DISCLAIMER.md) | What this is and is not built for. Worth reading before you trust it with anything. |

@@ -1,0 +1,149 @@
+{
+  "$comment": "Machine readable facts about this repository, for tooling and coding agents. Human guidance lives in the AGENTS.md files and VISION.md; this file holds only things a program can act on. Keep it accurate or delete it: a stale map is worse than none.",
+  "schemaVersion": 1,
+  "name": "localdrive",
+  "displayName": "Local Drive",
+  "description": "Self hosted alternative to Google Drive. A Go server that owns the data, and a Flutter client for every platform.",
+  "repository": "https://github.com/MultiX0/LocalDrive",
+  "website": "https://localdrive.iprog.dev",
+  "license": "MIT",
+  "vendorNeutral": true,
+
+  "components": [
+    {
+      "id": "server",
+      "path": "server",
+      "role": "The product. Owns data, accounts, permissions and the API.",
+      "language": "go",
+      "languageVersion": "1.25",
+      "module": "github.com/MultiX0/LocalDrive/server",
+      "entrypoint": "cmd/localdrive",
+      "database": "sqlite (pure Go driver, CGO_ENABLED=0)",
+      "constraints": [
+        "must build with CGO_ENABLED=0",
+        "must stay a single binary with no runtime dependency"
+      ],
+      "commands": {
+        "run": "go run ./cmd/localdrive serve",
+        "build": "go build ./cmd/localdrive",
+        "test": "go test -race -count=1 ./...",
+        "vet": "go vet ./...",
+        "format": "gofmt -w .",
+        "formatCheck": "gofmt -l ."
+      },
+      "layers": {
+        "internal/httpapi": "routing, decoding, status codes, the single error envelope",
+        "internal/files": "file and folder rules, permission decisions",
+        "internal/auth": "accounts, sessions, device approval, TOTP",
+        "internal/shares": "shares, links, invitations",
+        "internal/libraries": "storage locations and drives",
+        "internal/settings": "server settings",
+        "internal/storage": "content addressed bytes on disk",
+        "internal/uploads": "resumable upload state",
+        "internal/db": "connection and migrations",
+        "internal/app": "wiring, and the integration tests",
+        "internal/runner": "the CLI: setup, service, status, update",
+        "internal/updater": "self update against GitHub releases",
+        "pkg/pathsafe": "the only sanctioned way to turn a user supplied name into a path"
+      },
+      "migrations": {
+        "path": "migrations",
+        "format": "numbered SQL, embedded, applied in filename order on start",
+        "rule": "never edit a migration that has shipped, add a new numbered file"
+      }
+    },
+    {
+      "id": "client",
+      "path": "localdrive",
+      "role": "Interface to the server. Holds nothing the server does not.",
+      "language": "dart",
+      "framework": "flutter",
+      "stateManagement": "riverpod",
+      "routing": "go_router",
+      "localDatabase": "drift",
+      "httpClient": "dio",
+      "sourcePlatforms": ["android", "windows", "linux", "macos", "ios", "web"],
+      "releasedPlatforms": ["android", "windows", "linux"],
+      "locales": ["en", "ar"],
+      "rtl": true,
+      "generatedCode": {
+        "gitignored": true,
+        "patterns": ["*.g.dart", "*.freezed.dart"],
+        "command": "dart run build_runner build --delete-conflicting-outputs",
+        "note": "a clean checkout does not compile until this has been run"
+      },
+      "commands": {
+        "setup": "flutter pub get && dart run build_runner build --delete-conflicting-outputs",
+        "run": "flutter run",
+        "analyze": "flutter analyze",
+        "test": "flutter test",
+        "format": "dart format ."
+      }
+    },
+    {
+      "id": "docs",
+      "path": "docs",
+      "role": "The single source for all documentation. Rendered by the website.",
+      "format": "CommonMark with frontmatter, parsed as markdown not MDX",
+      "frontmatterRequired": ["title", "description"],
+      "linkStyle": "internal links carry no file extension",
+      "validation": "cd landing && npm run build"
+    },
+    {
+      "id": "landing",
+      "path": "landing",
+      "role": "Website and rendered documentation. Reads ../docs and ../LICENSE at build time.",
+      "language": "typescript",
+      "framework": "next",
+      "commands": {
+        "setup": "npm install",
+        "dev": "npm run dev",
+        "build": "npm run build",
+        "lint": "npx eslint"
+      },
+      "note": "npm run build is the repository's only internal link checker"
+    }
+  ],
+
+  "checks": {
+    "$comment": "Everything CI runs, plus the client and site checks CI does not yet run. Run all of them before claiming a change is finished.",
+    "all": [
+      { "component": "server", "cwd": "server", "run": "gofmt -l ." , "expect": "no output" },
+      { "component": "server", "cwd": "server", "run": "go vet ./..." },
+      { "component": "server", "cwd": "server", "run": "go test -race -count=1 ./..." },
+      { "component": "client", "cwd": "localdrive", "run": "flutter analyze" },
+      { "component": "client", "cwd": "localdrive", "run": "flutter test" },
+      { "component": "landing", "cwd": "landing", "run": "npm run build" }
+    ]
+  },
+
+  "publicContracts": [
+    { "name": "HTTP API", "documentedAt": "docs/api-reference", "consumers": ["localdrive", "share links", "third party clients"] },
+    { "name": "CLI surface and output", "documentedAt": "docs/self-hosting/cli.mdx", "consumers": ["operators", "service units", "scripts"] },
+    { "name": "Database schema", "documentedAt": "server/migrations", "consumers": ["existing installs"] },
+    { "name": "On disk layout", "documentedAt": "docs/self-hosting/where-your-data-lives.mdx", "consumers": ["existing installs", "backups"] },
+    { "name": "Configuration keys", "documentedAt": "docs/self-hosting/environment-variables.mdx", "consumers": ["existing installs", "docker-compose.yml"] },
+    { "name": "Release asset filenames", "documentedAt": "docs/contributing/releasing.mdx", "consumers": ["the website download page", "localdrive update"] }
+  ],
+
+  "guidance": {
+    "root": "AGENTS.md",
+    "vision": "VISION.md",
+    "scoped": {
+      "server": "server/AGENTS.md",
+      "client": "localdrive/AGENTS.md",
+      "docs": "docs/AGENTS.md",
+      "landing": "landing/AGENTS.md"
+    },
+    "skills": ".ai/skills",
+    "contributing": "CONTRIBUTING.md",
+    "security": "SECURITY.md",
+    "testing": "docs/contributing/testing.mdx"
+  },
+
+  "release": {
+    "trigger": "push a bare version tag, for example 0.0.1",
+    "workflow": ".github/workflows/release.yml",
+    "warning": "asset filenames are load bearing, the website and the updater look for exact names"
+  }
+}
