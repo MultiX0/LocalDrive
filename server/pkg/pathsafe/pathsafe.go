@@ -104,6 +104,13 @@ func Join(root string, rel ...string) (string, error) {
 		if strings.ContainsRune(seg, 0) {
 			return "", ErrInvalidSegment
 		}
+		// an absolute segment is not a relative one. filepath.Join drops the
+		// leading separator and files it under root anyway, which turns a
+		// caller passing the wrong thing into a silently wrong path instead
+		// of an error.
+		if filepath.IsAbs(seg) {
+			return "", ErrInvalidSegment
+		}
 	}
 	joined := filepath.Join(append([]string{cleanRoot}, rel...)...)
 	joined = filepath.Clean(joined)

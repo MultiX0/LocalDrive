@@ -21,9 +21,11 @@ func TestLoggerKeepsResponseWriterHijackable(t *testing.T) {
 		sawHijacker bool
 		hijackErr   error
 	)
+	done := make(chan struct{})
 
 	handler := Logger(slog.New(slog.DiscardHandler))(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer close(done)
 			hijacker, ok := w.(http.Hijacker)
 			sawHijacker = ok
 			if !ok {
@@ -49,9 +51,11 @@ func TestLoggerKeepsResponseWriterHijackable(t *testing.T) {
 	if _, err := io.WriteString(conn, "GET / HTTP/1.1\r\nHost: x\r\n\r\n"); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	// read so the handler has certainly run before the assertions below
-	buf := make([]byte, 64)
-	_, _ = conn.Read(buf)
+	// the handler runs on the server's goroutine and writes both variables
+	// below, so waiting on it is what orders those writes before these reads.
+	// Waiting for bytes on the wire instead leaves it to chance, which the
+	// race detector fails on.
+	<-done
 
 	if !sawHijacker {
 		t.Fatal("the wrapped ResponseWriter does not implement http.Hijacker, " +
