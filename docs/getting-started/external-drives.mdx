@@ -1,0 +1,72 @@
+---
+title: External drives
+description: Plugging in a drive, using it, combining several, and ejecting safely.
+sidebar_position: 4
+---
+
+# External drives
+
+The requirement this solves: someone who is not comfortable with a terminal
+plugs a drive in, sees it in the app, starts using it, and later unplugs it
+safely, entirely from the UI.
+
+## Using a drive
+
+**Settings, Storage** lists this server's own storage, every other registered
+library, and a **Detected drives** section.
+
+- A drive with a filesystem Local Drive can use shows **Use this drive**. One
+  tap mounts it and registers it as a library. No further steps.
+- A drive with no usable filesystem shows **Format**, which is the one
+  destructive action in the whole flow and is guarded accordingly: a sheet
+  states plainly that everything on the drive will be permanently deleted, and
+  the confirm button stays inert until you type `ERASE THIS DRIVE` exactly.
+- A drive already in use shows **Eject**, which flushes and unmounts before
+  telling you it is safe to unplug.
+
+More than one library can be in use at once. Each shows its own used, free, and
+total space, and any one can be marked **Default** for new top level uploads.
+
+## Combining drives
+
+Selecting two or more mounted drives offers **Combine into one drive**. This
+uses `mergerfs`, a mature Linux union filesystem, rather than a custom
+allocator, because hand rolled disk spanning is exactly the kind of thing that
+quietly causes data loss.
+
+Before anything happens, the sheet states what this is:
+
+> This adds capacity, not redundancy. If one drive fails, the files that
+> happened to land on it are lost while the rest keep working.
+
+Backups matter **more** with a combined drive, not less. See
+[Backups](../self-hosting/backups).
+
+The pool mounts with the `mfs` placement policy, which spreads new files toward
+whichever member has the most room. Everything else in the system treats the
+pool exactly like a single drive.
+
+## When a drive is unplugged
+
+Removable media going away is a normal condition here, not an error state. The
+server checks periodically that each external library's mount point still
+resolves to the same device. If it does not:
+
+- The library is marked `offline`.
+- Reads and writes against it return one clear error rather than failing in
+  unrelated ways.
+- The app shows a persistent banner instead of an error per file.
+- Every other library keeps working.
+
+It returns to available on its own once the same device is back.
+
+## Without the privileged helper
+
+An admin who would rather not grant `SYS_ADMIN` to any container can run
+`scripts/setup-automount.sh` once on the host instead. It installs a udev rule
+that mounts USB storage under the same directory, and the backend picks those
+up identically. Both paths land in the same **Detected drives** screen.
+
+Drive management is Linux only either way, because `mount` and `mergerfs` are
+Linux tools. On a Windows host the helper says so plainly and everything else
+works.

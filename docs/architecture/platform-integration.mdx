@@ -1,0 +1,163 @@
+---
+title: Platform integration
+description: The native work behind each platform, and what each one can honestly promise.
+sidebar_position: 5
+---
+
+# Platform integration
+
+Most of the app is one Flutter codebase. This page is about the parts that are
+not, because the platform genuinely does something different.
+
+Everything native goes through one method channel, `app.localdrive/platform`.
+Anything that could be done in Dart is done in Dart: a native implementation is
+a second thing to keep correct on four platforms.
+
+## Android
+
+**Background transfers.** A transfer that is still running when the app leaves
+the screen would be killed with the process. `TransferService`, a foreground
+service with a visible progress notification, is what tells Android the work is
+real. Dart owns the queue and native owns only the notification, so the two can
+never disagree about what is happening.
+
+The notification is low importance on purpose. A transfer running is
+information, not an interruption, so it never makes a sound.
+
+**Retrying after a drop.** When the queue pauses because the device went
+offline, `TransferRetryWorker` is scheduled through WorkManager with a
+connectivity constraint. Android runs it once there is a network again, it
+starts the transfer service, and the real queue in Dart resumes from its last
+acknowledged byte. The worker transfers nothing itself; duplicating resumable
+uploads in Kotlin would mean two implementations that have to agree forever.
+
+**The notification permission** is requested only after a sheet explains why,
+and only once. A cold system prompt on first launch is the reason so many
+people have notifications off for apps that need them. A no is a real answer
+and is not asked again.
+
+**Receiving shares.** `ACTION_SEND` and `ACTION_SEND_MULTIPLE` filters for
+`*/*` are what put Local Drive in the system share sheet. Files land in
+whichever folder is open, which is what someone sharing into a file app
+expects.
+
+**Handing files out** goes through a `FileProvider` scoped to exactly two
+directories, the offline copies and the downloads folder. A provider exposing
+all of internal storage would also expose the token store and the device
+database sitting next to it.
+
+**Links.** The `localdrive://` scheme always works, including on an install
+Android never got round to verifying and on a device with no internet to verify
+against. App Links are declared for `/s/`, `/invite/` and `/files/` paths on
+any https host, which gets verified links for a server that has a domain and
+serves an `assetlinks.json`, and falls back to the scheme for one on a bare IP.
+
+## iOS
+
+iOS is stricter than Android about long-running background work, and this says
+so rather than promising otherwise. A background `URLSession` keeps a transfer
+moving for a while after the app leaves the screen; past that, the app resumes
+from its last acknowledged byte on next open, which the tus-based queue already
+handles correctly.
+
+**The share sheet needs a real Share Extension**, a second Xcode target. Unlike
+Android there is no manifest entry that does it. The complete source lives in
+`localdrive/ios/ShareExtension/`, along with the one step that has to happen in
+Xcode; see the README there.
+
+An extension runs in its own process with its own container, so it cannot hand
+a file to the app directly. It copies what it was given into a shared app group
+container, writes a small manifest naming what it copied, and opens the app
+through `localdrive://share`. The app reads the manifest on launch and enqueues
+real uploads from it, which makes a share arriving while the app is
+closed work at all.
+
+**Local network access** needs both `NSLocalNetworkUsageDescription` and an
+`NSBonjourServices` entry, or iOS refuses multicast entirely and discovery
+silently finds nothing.
+
+**Plain HTTP on the local network** is allowed through
+`NSAllowsLocalNetworking`, not a blanket transport exception. A self-hosted
+server on `192.168.x.x` has no public certificate because no authority will
+issue one for a private address.
+
+## Desktop
+
+**The window.** The system title bar is removed and replaced with the app's
+own, through `bitsdojo_window`. There is no way to make a Windows or Linux
+title bar match a dark app, and a pale strip above a dark window is the most
+obvious sign of an unfinished Flutter app.
+
+macOS keeps its traffic lights. They are a convention people rely on and
+replacing them would be worse than pointless, so on that platform the bar is
+only a draggable strip with room left for them. The asymmetry is deliberate.
+
+**Closing the window is not quitting.** A transfer halfway through has no
+reason to die because someone clicked the X, so the window hides to the tray
+and the queue keeps running. Quit is a deliberate choice from the tray menu,
+which is also the only place that can honestly offer it.
+
+**The tray menu is localized**, like every other piece of text in the app. It
+is built inside the widget tree rather than in `main`, because that is where
+the current language is.
+
+**Launch at startup** is off by default. A self-hosted file client is not
+something to add to someone's login items without asking.
+
+**Drag and drop** works in both directions through `desktop_drop`, and macOS
+registers `public.item` so "Open With, Local Drive" appears in Finder.
+
+**Links** use the `localdrive://` scheme, registered through the installer.
+Windows and Linux have no App Links equivalent.
+
+## Web
+
+The loading screen in `web/index.html` is the app's own, with the logo mark at
+rest, rather than Flutter's default placeholder. It is the first thing anyone
+sees.
+
+`manifest.json` carries maskable icon variants and a `share_target` entry, so
+the app installs as a proper PWA and can appear in the OS share sheet on
+platforms that support PWA share targets.
+
+Path-based routing is on, which removes the `/#/` from URLs. That is only half
+the fix: the reverse proxy also serves `index.html` for any path that is not a
+real asset, or a refresh on `/files/abc123` returns 404. Both halves are
+required, and the generated Caddyfile has the second one.
+
+Two things are genuinely not available in a tab, and are not offered rather
+than offered and then failing:
+
+- **Offline availability**, because a tab has no filesystem to keep bytes in.
+- **Resumable downloads.** A tab cannot write to disk as bytes arrive, so a
+  download is assembled in memory and handed to the browser as a blob at the
+  end. An interrupted one starts again, and the download code knows that rather
+  than sending a Range header that would quietly produce a corrupt file.
+
+## Deep links across servers
+
+Local Drive is not one service with one domain. A bare path like `/files/:id`
+is ambiguous without knowing which server it belongs to.
+
+On web this resolves itself: the link is already absolute to that server's own
+address. For a native link opened from outside the app, the app compares the
+link's host and port against the server it is connected to, and offers to
+switch rather than failing or silently opening the wrong thing. Public share
+links skip that check, since they need no session at all.
+
+Invite and public share links are always generated as full absolute URLs to
+their specific server, for exactly this reason.
+
+## Identifiers
+
+| Platform | Identifier |
+| --- | --- |
+| Android | `app.localdrive` |
+| iOS, macOS | `app.localdrive` |
+| iOS app group | `group.app.localdrive` |
+| Linux | `app.localdrive` |
+| Custom scheme | `localdrive://` |
+
+If you ship under your own account, change the app group in three places and
+keep them identical: the app's entitlements, the extension's entitlements, and
+the `appGroup` constant in `ShareViewController.swift`.

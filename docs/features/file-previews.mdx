@@ -1,0 +1,130 @@
+---
+title: File previews
+description: What opens inline, and how each format is read.
+sidebar_position: 6
+---
+
+# File previews
+
+Most things open in the app rather than needing a download first.
+
+| Type | What happens |
+| --- | --- |
+| Image | Pinch and pan, at full resolution |
+| Video | Plays inline with the app's own controls: scrubber, elapsed and remaining time, volume, and full screen |
+| Audio | Plays with a turning disc, the same scrubber and clock as video, and volume on a desktop |
+| PDF | Reads page by page, streamed rather than downloaded whole |
+| Markdown | Rendered: headings, lists, tables, code blocks, quotes |
+| Text and code | Read directly, with a line gutter for code |
+| Spreadsheet | A scrollable grid with sheet tabs |
+| Document | A reading column with headings, emphasis and lists |
+| Anything else | A type badge and a download button |
+
+## PDF
+
+Loaded over the network with range access rather than downloaded whole, which
+is the only way a two hundred page scan opens on a phone without waiting. The
+page bar underneath shows position and moves a page at a time, with the numbers
+in the locale's own digits.
+
+On web the browser fetches the whole body, because range access is not
+available there.
+
+## Spreadsheets
+
+`.xlsx`, `.ods`, `.csv` and `.tsv`.
+
+The grid scrolls both ways with the column letters and row numbers staying put,
+because a cell in the middle of a wide sheet is meaningless once its labels
+have scrolled off. Numbers align right so a column of them can be compared at a
+glance. Sheet tabs appear along the bottom when a workbook has more than one.
+
+Values are resolved, not formulas. This is a reader.
+
+CSV is parsed properly rather than by splitting on commas: a quoted field can
+contain the delimiter, a newline, and an escaped quote, and real exported data
+contains all three. A byte order mark is stripped, so a file exported from a
+spreadsheet application does not show a stray glyph in its first cell.
+
+**`.xls`, the old binary format, is not read.** It is not a zip of XML like
+everything else here, and would need a completely separate parser. Files in it
+still download and open in a spreadsheet application.
+
+## Documents
+
+`.docx`, `.odt` and `.rtf`.
+
+Rendered as a reading column rather than a page. Reproducing the original's
+page breaks and margins on a phone would be worse than useless: an A4 page
+scaled to a 390 point screen is unreadable, and what anyone wants from a
+document preview is to read it.
+
+So it keeps the formatting that carries meaning, which is headings, emphasis
+and lists, and drops everything the file says about how it should look.
+
+RTF is reduced to its text. It is a control-word format rather than XML and
+typesetting it properly would be a project of its own; this is honest about
+being enough to read the document and not enough to reproduce it.
+
+## Markdown
+
+Parsed with a standard parser and then rendered with the app's own widgets. A
+packaged renderer would bring its own type scale, its own code block and its
+own table, and a markdown file would then look like a markdown file in some
+other app rather than like this one.
+
+Code blocks do not wrap, because a wrapped line of code is a lie about where
+the line breaks are. Links are coloured but not tappable: a preview that opens
+arbitrary URLs is a way to end up somewhere you did not mean to go.
+
+## Text and code
+
+Read as a bounded prefix rather than whole, so opening a log that has grown to
+hundreds of megabytes costs the same as opening a small one. When the file is
+longer than the cap, the screen says so at the top rather than quietly showing
+part of it.
+
+Code gets a line gutter and does not wrap. Prose gets neither, because both
+would only be noise.
+
+## How the office formats are read
+
+`.xlsx`, `.docx`, `.ods` and `.odt` are all a zip of XML. One set of machinery
+covers every one of them, in Dart, so a preview needs nothing installed on the
+server.
+
+They are parsed on a background isolate. A twenty megabyte spreadsheet takes
+real time to unzip and walk, and doing that on the UI thread drops every frame
+until it finishes.
+
+There is a size cap. Unlike a log file, a zip has its index at the end and
+cannot be parsed from a prefix, so the whole file has to be in memory. Past the
+cap the screen says the file is too large to open here rather than taking the
+app down trying.
+
+## Offline
+
+Every one of these viewers has a second path that reads from a file on the
+device instead of the network. That is what an offline available file takes,
+and it is why opening one costs nothing with the radio off.
+
+## How video and audio play
+
+Both use libmpv, the engine behind mpv, rather than each platform's own
+decoder. That matters for one reason: it streams.
+
+The player asks the server for the byte range it needs and starts on the first
+keyframe, so a large file begins playing immediately instead of downloading in
+full first. In the server log a streaming player shows `206`, and a player that
+pulled the whole file down before showing anything shows `200` with the full
+byte count. Nothing has to be saved to the device to be watched.
+
+Seeking works the same way. Dragging or tapping the scrubber asks for the range
+around that point, which is why scrubbing a long video does not stall.
+
+The controls are the app's own rather than the platform's, so they carry the
+same palette, radii and motion as the rest of Local Drive. They fade out while
+a video plays and come back on any movement, and never fade while it is paused.
+
+Volume appears on desktop only. A phone has hardware volume keys and a control
+bar with no room to spare.

@@ -1,0 +1,28 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- The Local Drive mark. Solid layered panels, not a thin outline: a back
+       panel with the tab, a sheet peeking out of the opening, and a front
+       panel over it, the way a real folder reads at a glance.
+
+       The app draws this same geometry in code so each layer can animate
+       independently during onboarding. This file is the source for the raster
+       exports, and the two must stay in step. -->
+
+  <!-- logo-back: the folder back and its tab, always visible -->
+  <path id="logo-back" d="M10 12 L24 12 L29 18 L54 18 Q58 18 58 22 L58 46
+    Q58 50 54 50 L10 50 Q6 50 6 46 L6 16 Q6 12 10 12 Z" fill="#2A6FD6"/>
+
+  <!-- logo-sheet: the contents, rising out of the opening on connect -->
+  <path id="logo-sheet" d="M14 21 L50 21 Q52 21 52 23 L52 44 L12 44 L12 23
+    Q12 21 14 21 Z" fill="#DCE3EE"/>
+
+  <!-- logo-front: the front panel, the brightest shape -->
+  <path id="logo-front" d="M10 26 L54 26 Q58 26 58 30 L58 46 Q58 50 54 50
+    L10 50 Q6 50 6 46 L6 30 Q6 26 10 26 Z" fill="#4C8DFF"/>
+
+  <!-- logo-arc: the sync arc on the front panel, draws in on the language step -->
+  <path id="logo-arc" d="M25.5 41.5 A8 8 0 1 1 38.5 41.5" stroke="#FFFFFF"
+    stroke-width="3" stroke-linecap="round"/>
+
+  <!-- logo-node: the connection dot, fills solid on the server connect step -->
+  <circle id="logo-node" cx="32" cy="38" r="3.2" fill="#FFFFFF"/>
+</svg>

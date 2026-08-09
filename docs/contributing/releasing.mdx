@@ -1,0 +1,160 @@
+---
+title: Releasing
+description: How a version is cut, and the asset names the website depends on.
+sidebar_position: 4
+---
+
+# Releasing
+
+Push a tag. Everything else happens on its own.
+
+```
+git tag 0.0.1
+git push origin 0.0.1
+```
+
+The tag is the version. It is a bare number with no leading `v`, and it is the
+only place the version is written: the build stamps it into the binary, names
+the release after it, and the website reads it back. Nothing else needs
+editing.
+
+## What gets built
+
+`.github/workflows/release.yml` builds four jobs in parallel and publishes them
+as one release with a `SHA256SUMS` file alongside.
+
+### The server
+
+| File | Platform |
+| --- | --- |
+| `server` | Linux x86-64 |
+| `server-arm64` | Linux arm64 |
+| `server.exe` | Windows x86-64 |
+
+Genuinely single files. `CGO_ENABLED=0` with the pure Go SQLite driver means no
+runtime, no shared libraries and no install step.
+
+### The apps
+
+| File | Platform |
+| --- | --- |
+| `localdrive-client.apk` | Android |
+| `localdrive-client-setup.exe` | Windows x86-64, installer |
+| `localdrive-client-windows.zip` | Windows x86-64, portable |
+| `localdrive-client-linux.tar.gz` | Linux x86-64 |
+
+**The desktop clients are archives or installers, never a bare executable, and
+this is not a packaging preference.** `flutter build windows` produces a
+directory containing `runner.exe`, several DLLs and a `data/` folder;
+`flutter build linux` produces a bundle directory with an executable, `lib/`
+and `data/`. The executable taken out of either one will not launch, because it
+resolves its engine and assets from its siblings at runtime. Shipping a lone
+`.exe` would produce a download that fails for everyone who tries it.
+
+Linux is a `.tar.gz` rather than a `.zip` because tar preserves the executable
+bit. A zip would leave every Linux user running `chmod +x` before anything
+worked.
+
+### Why the Windows installer is not an MSI
+
+`localdrive-client-setup.exe` is built by Inno Setup from
+`localdrive/windows/installer.iss`, which is one readable file.
+
+MSI is a deployment format for organisations: its reason to exist is Group
+Policy and SCCM rolling software onto managed machines. Producing one means
+WiX, an XML schema, GUID and component management, and a set of rules about
+what may change between versions, in exchange for nothing that a person
+double clicking a download would ever notice. If someone eventually needs to
+deploy Local Drive across a fleet, that is the moment to add an MSI beside
+this, not instead of it.
+
+The portable `.zip` ships in the same release. An installer cannot be a folder
+you carry on a USB stick, and some people want exactly that.
+
+Inno Setup is preinstalled on GitHub's `windows-latest` runner, so the
+installer costs the build nothing.
+
+The installer is unsigned, because signing needs a certificate that costs money
+annually and belongs to a legal identity. SmartScreen will warn on first run
+until the download builds reputation. Buying a certificate is a decision about
+the project rather than a missing build step.
+
+## Signing the Android build
+
+The release workflow needs four repository secrets. Without them the Android
+job fails on purpose, because the alternative is publishing an apk signed with
+the debug key.
+
+**That would be permanent.** Android identifies an app by its signing key, so
+an app installed with one key cannot be updated by a build signed with another.
+Every user would have to uninstall, losing what the app holds, before they
+could take an update. The debug key is also shared by every Android
+installation in the world, so anyone could sign an "update" to yours.
+
+Create the keystore once and keep it somewhere you will not lose it. Losing it
+means the same forced uninstall for everyone.
+
+```
+keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 \
+  -validity 10000 -alias localdrive
+```
+
+Then set these under **Settings, Secrets and variables, Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 release.jks` |
+| `ANDROID_STORE_PASSWORD` | The keystore password |
+| `ANDROID_KEY_PASSWORD` | The key password |
+| `ANDROID_KEY_ALIAS` | `localdrive` |
+
+The workflow writes `key.properties`, builds, checks the result is not debug
+signed, and deletes the keystore afterwards even if the build failed. Neither
+file is ever committed; both are in `.gitignore`.
+
+Building locally with no `key.properties` still works and falls back to the
+debug key, with a warning. That is fine for testing on your own phone and must
+not be published.
+
+## These names are load bearing
+
+The website matches on the exact filenames above, in
+`landing/lib/github.ts`. It does not pattern match, and that is deliberate: a
+release missing a file shows that row as **Not in this release** rather than
+quietly omitting it. A reader looking for the Windows build and finding no row
+at all cannot tell whether it does not exist or whether the page is broken.
+
+So if a filename changes here, change it there in the same commit.
+
+## Adding a platform
+
+Three edits, in this order:
+
+1. A job or matrix entry in `.github/workflows/release.yml` that produces the
+   file.
+2. A row in `SERVER_FILES` or `CLIENT_FILES` in `landing/lib/github.ts`.
+3. A row in the table above.
+
+## macOS and iOS are not built
+
+Neither is in the workflow, and both need more than a build step to be useful:
+a macOS app that is not signed and notarised is refused by Gatekeeper, and iOS
+cannot be distributed outside the App Store at all. Adding them means an Apple
+Developer account and signing secrets in the repository, which is a decision
+about the project rather than a missing line of YAML.
+
+Both platforms still work when built from source.
+
+## Before tagging
+
+CI runs on every push to `main`, so a green branch is the precondition. Worth
+confirming by hand:
+
+```
+cd server     && go test ./... && go vet ./...
+cd localdrive && flutter analyze && flutter test
+cd landing    && npm run build
+```
+
+A tag on a red commit produces a release with missing assets, and the website
+will say so on the download page, accurately and publicly.

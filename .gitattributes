@@ -1,0 +1,52 @@
+# Normalise line endings.
+#
+# Without this, a file written on Windows arrives with CRLF and a contributor
+# on Linux sees the whole file as changed the moment they touch it. Text is
+# stored with LF and checked out with whatever the platform uses.
+* text=auto
+
+# These break if they get CRLF, whatever the platform.
+*.sh          text eol=lf
+*.bash        text eol=lf
+Dockerfile    text eol=lf
+*.Dockerfile  text eol=lf
+gradlew       text eol=lf
+*.pem         text eol=lf
+
+# Windows tools that need CRLF.
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+gradlew.bat   text eol=crlf
+
+# Binary, so git never tries to merge or diff them as text.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.webp    binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.otf     binary
+*.wasm    binary
+*.jks     binary
+*.keystore binary
+*.apk     binary
+*.zip     binary
+*.gz      binary
+
+# Generated, so a diff does not bury the change that caused it.
+*.g.dart        linguist-generated=true
+*.freezed.dart  linguist-generated=true
+localdrive/lib/l10n/generated/**  linguist-generated=true
+pubspec.lock    linguist-generated=true
+package-lock.json linguist-generated=true
+
+# The repository is a Go server and a Flutter client. Without this GitHub
+# reports it as mostly HTML, because the Flutter web bundle and the docs
+# outweigh the source.
+docs/**         linguist-documentation=true
+landing/**      linguist-documentation=true
+localdrive/web/** linguist-vendored=true

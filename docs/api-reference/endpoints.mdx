@@ -1,0 +1,160 @@
+---
+title: Endpoints
+description: The full REST and WebSocket surface.
+sidebar_position: 2
+---
+
+# Endpoints
+
+All under `/api/v1`, JSON, bearer token unless noted.
+
+## Unauthenticated
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/status` | Server name, version, whether setup is needed, two booleans. Nothing about users or files. |
+| POST | `/setup` | Create the first admin. Refused once any user exists. |
+| POST | `/auth/register` | Create an account, with an invite unless self registration is on |
+| POST | `/auth/login` | Password sign in |
+| POST | `/auth/refresh` | Rotate the refresh token |
+| GET | `/invites/{code}/check` | Whether a code can still be redeemed |
+| GET | `/healthz` | Liveness and readiness |
+
+## Account
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/me` | Profile and quota usage |
+| PATCH | `/me/password` | Change your own password |
+| PATCH | `/me/profile` | Change your display name |
+| POST | `/auth/logout` | Revoke this session |
+| POST | `/auth/2fa/begin` | Start TOTP enrollment |
+| POST | `/auth/2fa/verify` | Confirm enrollment |
+| POST | `/auth/2fa/disable` | Turn it off, with the account password |
+| GET | `/users` | Every account, name and avatar seed only |
+
+## Nodes
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/nodes?parent_id=&filter=&query=&sort=&order=` | List a folder or a filtered view |
+| POST | `/nodes/folder` | Create a folder |
+| GET | `/nodes/{id}` | One node |
+| GET | `/nodes/{id}/path` | Breadcrumb, root first |
+| PATCH | `/nodes/{id}` | Rename, move, or recolor |
+| DELETE | `/nodes/{id}` | Move to trash |
+| POST | `/nodes/{id}/restore` | Restore from trash |
+| DELETE | `/nodes/{id}/permanent` | Delete for good |
+| POST/DELETE | `/nodes/{id}/star` | Your own bookmark |
+| GET | `/nodes/{id}/preview` | Up to four child thumbnails |
+| GET | `/nodes/{id}/download` | Streamed, `Range` aware |
+| GET | `/nodes/{id}/thumbnail` | Cached preview, 404 if none |
+| GET | `/nodes/{id}/versions` | Version history |
+| POST | `/nodes/{id}/versions/{vid}/restore` | Restore a version |
+| GET | `/trash` | Trashed items and the retention policy |
+| GET | `/activity` | Activity log |
+
+`parent_id=root` blends this account's own top level items with anything shared
+directly with them.
+
+### Filters
+
+| `filter` | Returns |
+| --- | --- |
+| *(none)* | The contents of `parent_id` |
+| `shared` | Only items shared with this account by someone else |
+| `starred` | Only bookmarked items |
+| `recent` | Files by last modified, no folders |
+| `gallery` | Every image and video, flat, no folders |
+
+`gallery` is deliberately flat. A gallery is not a folder listing with a filter
+on it, so folders never appear in the result.
+
+### Sorting
+
+`sort` takes `name`, `updated`, `created`, `size`, or `taken`. `order` takes
+`asc` or `desc`. Folders always sort above files.
+
+`taken` orders by when a picture was taken, falling back to when it was
+uploaded for anything with no capture time. Without the fallback every
+screenshot would pile up at one end.
+
+### Media fields on a node
+
+Present only for images the server has processed:
+
+| Field | Meaning |
+| --- | --- |
+| `image_width`, `image_height` | Pixel dimensions, so a client can lay out a photo grid before any thumbnail has loaded. Swapped when the file's orientation says the stored pixels are rotated |
+| `taken_at` | Capture time from the file's own metadata, in milliseconds. Absent when the file carries none, rather than defaulted, so a client can decide its own fallback |
+
+Both are read from the file's header when it is first processed, alongside the
+thumbnail. A file the thumbnailer cannot render still gets them.
+
+## Uploads
+
+`POST /uploads` and `PATCH /uploads/{id}` implement the tus protocol. Send
+`filename`, `filetype`, and optionally `parent_id` or `node_id` as
+`Upload-Metadata`. The finished response carries `Local-Drive-Node-Id`.
+
+## Sharing
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/nodes/{id}/shares` | Links on this node |
+| POST | `/nodes/{id}/share` | Create a link |
+| PATCH | `/shares/{id}` | Edit expiry, password, or download, same URL |
+| DELETE | `/shares/{id}` | Revoke |
+| GET | `/shares` | Shared by me |
+| GET/POST | `/nodes/{id}/permissions` | People with access, and granting |
+| DELETE | `/nodes/{id}/permissions/{userId}` | Remove access |
+
+Public, no auth: `GET /s/{token}`, `/s/{token}/download`,
+`/s/{token}/thumbnail`, `/s/{token}/children`. An expired link returns **410**.
+
+## Libraries and drives
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/libraries` | Each with used, free, total, kind, status, default |
+| POST | `/libraries` | Register a detected mount |
+| PATCH | `/libraries/{id}/set-default` | Mark as default |
+| POST | `/libraries/{id}/eject` | Unmount cleanly |
+| GET | `/admin/drives` | Detected block devices |
+| POST | `/admin/drives/{id}/mount` | Mount and register |
+| POST | `/admin/drives/{id}/format` | Requires the confirmation phrase |
+| POST | `/admin/drives/pool` | Combine into one |
+
+## Devices and admin
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/sessions` | Devices on your account |
+| DELETE | `/sessions/{id}` | Sign one out |
+| GET | `/devices/pending` | Waiting for approval |
+| POST | `/devices/{id}/approve` \| `/deny` | Let one in, or not |
+| GET/PATCH | `/server/settings` | Runtime editable settings |
+| GET | `/admin/users` | User management |
+| POST | `/admin/users/{id}/reset-password` | Temporary password |
+| GET/POST/DELETE | `/admin/invites` | Invites |
+
+## Idempotency
+
+Create endpoints accept an `Idempotency-Key` header. If the same key arrives
+twice, because a client retried after a lost response rather than an actual
+failure, the first result is returned again instead of creating a second folder
+or a second share link.
+
+## WebSocket
+
+`GET /ws`, with the access token as `Authorization` or, for browsers, as an
+`access_token` query parameter. Events are scoped to the users who may see
+them:
+
+`node.created`, `node.updated`, `node.moved`, `node.deleted`, `node.restored`,
+`node.thumbnail_ready`, `upload.progress`, `quota.updated`, `device.pending`,
+`device.approved`, `device.denied`, `share.received`, `library.changed`,
+`server.settings_changed`, `session.revoked`.
+
+Each connection has a bounded outbound queue. A client that falls behind loses
+its oldest queued message rather than stalling everyone else.

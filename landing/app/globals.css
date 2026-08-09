@@ -1,0 +1,297 @@
+@import "tailwindcss";
+@import "./prose.css";
+
+/*
+  The brand contract.
+
+  Every value here is lifted from the app's own design system so the site and
+  the product cannot drift apart. The source of truth is
+  localdrive/lib/core/constants/ld_colors.dart and its siblings. If a value
+  changes there, it changes here and nowhere else.
+
+  Two rules this system enforces by omission, both deliberate decisions in the
+  app: there are no shadows, and there are no gradients. Every surface is a
+  flat fill plus a one pixel border. Reaching for either means it is off brand.
+*/
+
+@theme {
+  /* surfaces */
+  --color-base: #141414;
+  --color-elevated: #202020;
+  --color-sunken: #0e0e0e;
+
+  /* text and stroke */
+  --color-fg: #ffffff;
+  --color-fg-secondary: #909090;
+  --color-fg-muted: #434343;
+  --color-stroke: #3d3d3d;
+
+  /* the only two accents. the file type tones below are semantic, they mean
+     "this is a spreadsheet", and must never be used decoratively */
+  --color-accent: #4c8dff;
+  --color-warning: #ee7759;
+
+  /* file type tones, for the product visuals only */
+  --color-file-doc: #4c8dff;
+  --color-file-sheet: #4caf6d;
+  --color-file-slides: #e8935c;
+  --color-file-pdf: #e5646b;
+  --color-file-code: #9b7bef;
+  --color-file-media: #4cc6c6;
+
+  /* the logo, which uses a hand picked back panel rather than a derived one */
+  --color-mark-back: #2a6fd6;
+  --color-mark-sheet: #dce3ee;
+
+  /* radii, straight from LdRadii */
+  --radius-chip: 10px;
+  --radius-field: 12px;
+  --radius-tile: 14px;
+  --radius-card: 16px;
+  --radius-pill: 24px;
+
+  /* type */
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-plex-arabic), var(--font-space-grotesk), sans-serif;
+
+  /* motion. one duration and one curve carry almost everything, the same way
+     they do in the app */
+  --ease-brand: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-brand-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+:root {
+  --duration-standard: 280ms;
+  --duration-tap: 120ms;
+  --duration-step: 400ms;
+
+  /* the widest a reading column ever gets, matching Breakpoints.contentMaxWidth */
+  --measure: 640px;
+}
+
+* {
+  border-color: var(--color-stroke);
+}
+
+html {
+  scroll-behavior: smooth;
+  /* the sticky docs header must not cover the heading an anchor jumps to */
+  scroll-padding-top: 6rem;
+  background-color: var(--color-base);
+}
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Arabic swaps the whole face, exactly as the app does at the ThemeData level,
+   rather than patching individual elements */
+[lang="ar"] body,
+[dir="rtl"] body {
+  font-family: var(--font-arabic);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  color: var(--color-fg);
+}
+
+/* the app disables ripples and uses a 120ms opacity fade instead. same here,
+   so a button feels identical in both places */
+a,
+button {
+  transition: opacity var(--duration-tap) var(--ease-brand),
+    background-color var(--duration-tap) var(--ease-brand),
+    border-color var(--duration-tap) var(--ease-brand),
+    color var(--duration-tap) var(--ease-brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+  The signature entrance, lifted from LdMotion.fadeSlide: opacity 0 to 1 and
+  translateY 16px to 0, on the same easeOutCubic curve over 280ms. Every scroll
+  reveal on this site uses it, so the page enters the way the app does.
+*/
+@keyframes ld-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ld-enter {
+  animation: ld-enter var(--duration-standard) var(--ease-brand) both;
+}
+
+/*
+  The mark building itself up, one layer per onboarding step, the same order
+  and the same 400ms per step the app uses. Driven entirely by CSS so the hero
+  needs no client JavaScript at all.
+
+  Six second cycle: the four steps take the first 1.2s, then it holds. It
+  loops because a hero that plays once is missed by anyone who scrolls back up.
+*/
+@keyframes ld-mark-sheet {
+  0%,
+  6.67% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  13.33%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ld-mark-node {
+  0%,
+  6.67% {
+    transform: scale(0);
+  }
+  13.33%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ld-mark-arc {
+  0%,
+  13.33% {
+    stroke-dashoffset: 40;
+  }
+  20%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ld-mark-sheet {
+  animation: ld-mark-sheet 6s var(--ease-brand) infinite;
+}
+
+.ld-mark-node {
+  transform-box: view-box;
+  transform-origin: 32px 38px;
+  animation: ld-mark-node 6s var(--ease-brand) infinite;
+}
+
+.ld-mark-arc {
+  animation: ld-mark-arc 6s var(--ease-brand) infinite;
+}
+
+/* with reduced motion the mark simply sits at its finished state, which is
+   the complete stage, rather than animating */
+@media (prefers-reduced-motion: reduce) {
+  .ld-mark-sheet,
+  .ld-mark-node,
+  .ld-mark-arc {
+    animation: none;
+  }
+  .ld-mark-arc {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* scrollbar, matching the app's 4px thumb */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-fg-secondary) 35%, transparent)
+    transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-fg-secondary) 35%, transparent);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* every animation here is decoration, so all of it turns off when someone
+   has asked for less motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+  Ambient texture for the hero, since a page of flat panels on a flat
+  background reads as unfinished. This is a background treatment, not a
+  surface: components keep their flat fill and one pixel stroke, and nothing
+  here puts a gradient or a shadow on a card.
+*/
+.hero-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* fades out before it reaches any edge, so it never reads as a table */
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+/* one soft pool of brand light behind the mark, well under the text */
+.hero-glow::after {
+  content: "";
+  position: absolute;
+  top: -140px;
+  left: 50%;
+  z-index: -1;
+  height: 420px;
+  width: min(880px, 92vw);
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(76, 141, 255, 0.16) 0%,
+    rgba(76, 141, 255, 0.05) 40%,
+    transparent 70%
+  );
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-glow::after {
+    display: none;
+  }
+}

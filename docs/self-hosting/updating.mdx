@@ -1,0 +1,107 @@
+---
+title: Updating
+description: Upgrading a running install.
+sidebar_position: 5
+---
+
+# Updating
+
+## Under Docker
+
+```
+localdrive stop
+git pull
+localdrive start
+```
+
+`localdrive start` rebuilds the image. Migrations run automatically at startup,
+in order, each in its own transaction. A migration that has already been
+applied is skipped, and one whose contents changed after it was applied is a
+hard error rather than a silent divergence.
+
+## Running directly
+
+Replace the `localdrive` executable and restart it. The install directory,
+including `.env` and `data/`, is untouched.
+
+## Before any upgrade
+
+Take a backup. See [Backups](./backups). It takes seconds and it is the
+difference between an inconvenience and a bad day.
+
+## Downgrading
+
+Not supported once a migration has run. Restore from the backup you took
+instead.
+
+## Updating from the command line
+
+The server can fetch its own updates.
+
+```
+localdrive update --check
+```
+
+That reports whether a newer stable release exists and what is in it, and
+changes nothing. Prereleases are ignored: an update command that silently
+pulled a release candidate onto the machine holding someone's photographs
+would be the wrong default.
+
+To install it:
+
+```
+localdrive update
+```
+
+### What it actually does, in order
+
+1. Checks for a newer stable release.
+2. Backs up the database and library. Pass `--no-backup` to skip it.
+3. Downloads the build for this platform and **verifies it against the
+   published `SHA256SUMS`**. A mismatch stops here and changes nothing.
+4. Moves the running binary aside as `.old` and puts the new one in place.
+5. Restarts, then waits for the server to answer.
+6. **If it does not answer, rolls back automatically** and restarts the old
+   one.
+
+Steps 1 to 3 happen while the server is still serving, so a failed download or
+a bad checksum costs no availability at all.
+
+### About downtime
+
+**This is a restart, not a zero downtime upgrade, and the gap is seconds.**
+
+Genuinely zero downtime would need either two processes handing a listening
+socket between them or two replicas behind the proxy. Neither fits a single
+self-hosted box, and claiming otherwise would be a lie you would discover at
+the worst moment. What is guaranteed is that nothing is lost: only the
+executable is replaced, and the database and library are never touched.
+
+### Going back
+
+The previous binary is kept beside the new one as `.old`, so undoing a bad
+release needs no network:
+
+```
+localdrive rollback
+```
+
+### Under Docker
+
+`localdrive update` will tell you to do this instead, because with Docker the
+image is what updates and replacing the file on disk would change nothing
+while appearing to work:
+
+```
+cd server
+docker compose pull
+docker compose up -d
+```
+
+### Where it fetches from
+
+Releases published on the project's own repository, over HTTPS, verified
+against the checksum file in the same release. The location is compiled in
+rather than read from configuration, because an update command that could be
+pointed at another host by an environment variable is a way to install
+somebody else's binary.

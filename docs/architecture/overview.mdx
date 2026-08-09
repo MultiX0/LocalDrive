@@ -1,0 +1,64 @@
+---
+title: Overview
+description: The processes, the repositories, and how a request flows.
+sidebar_position: 1
+---
+
+# Architecture overview
+
+## The processes
+
+```
+                     Reverse proxy (Caddy)
+                     TLS terminated once
+                              |
+                      Local Drive server (Go)
+                      REST + WebSocket API
+                        |              |
+              SQLite (WAL)      Filesystem store
+              metadata          content addressed
+                                + browse mirror
+                                       |
+                                Host mount point
+                            internal disk, network
+                            share, or external drive
+```
+
+Two small companions sit beside the server, each with exactly one narrow job
+and no more privilege than that job needs:
+
+| Process | Privilege | Why it is separate |
+| --- | --- | --- |
+| `serve` | none, unprivileged user | the API, the database, the files |
+| `mount-helper` | `SYS_ADMIN`, `/dev` | mounting is the only thing that needs it |
+| `lan-discovery` | host networking | real multicast needs it, nothing else does |
+| `proxy` | published ports | TLS, and serving the web build |
+
+All three Local Drive processes are the **same binary** in different modes. That
+does not weaken the separation: the boundary is the process and the container
+it runs in, not the file on disk. A compromise of the API server does not by
+itself grant raw device access, because the helper is a separate process
+reachable only over a Unix socket with a shared secret.
+
+## The repositories
+
+- `server`, the Go backend. Clone this to run your own instance.
+- `localdrive`, the Flutter client. One codebase producing mobile, tablet,
+  desktop, and web builds.
+
+The backend has no knowledge of which client is calling beyond an authenticated
+user and device. Every business rule lives server side, so any client,
+including a future one, gets correct behaviour for free.
+
+## How a request flows
+
+1. Caddy terminates TLS and routes `/api/*`, `/s/*`, and `/healthz` to the
+   server; everything else is the web build with an `index.html` fallback.
+2. Middleware resolves the client address, stamps a request id, recovers from
+   panics, applies CORS, and rate limits.
+3. The auth layer verifies the bearer token and loads the account behind it.
+4. The handler translates HTTP and calls a service. Business rules live in the
+   service, never in the handler.
+5. Writes go through one dedicated SQLite writer goroutine; reads use a
+   separate WAL backed pool and are never blocked by it.
+6. Mutations emit a WebSocket event scoped to the users who may see it.

@@ -1,0 +1,258 @@
+name: Release
+
+# Tagging a version builds everything and attaches it to the release.
+#
+# Tags are bare versions, 0.0.1, with no leading v. The tag is the version:
+# nothing else needs editing to cut a release.
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------- server
+  #
+  # The server is one file per platform, genuinely. CGO_ENABLED=0 with the pure
+  # Go SQLite driver means no runtime, no shared libraries, and no install
+  # step: the file you download is the whole server.
+  server:
+    name: Server (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux amd64
+            goos: linux
+            goarch: amd64
+            asset: server
+          - name: linux arm64
+            goos: linux
+            goarch: arm64
+            asset: server-arm64
+          - name: windows amd64
+            goos: windows
+            goarch: amd64
+            asset: server.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Build
+        working-directory: server
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        # the version is stamped from the tag, so `localdrive version` reports
+        # what was actually released rather than a placeholder
+        run: |
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
+            -o "../${{ matrix.asset }}" ./cmd/localdrive
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          if-no-files-found: error
+
+  # --------------------------------------------------------- android client
+  android:
+    name: Client (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Without these the build falls back to the debug key, which must never
+      # be published: the debug keystore is shared by every Android install, so
+      # anyone could sign an update to it. The signing key also cannot change
+      # later without every user uninstalling first, so this fails loudly
+      # rather than quietly shipping an unupgradeable apk.
+      - name: Set up signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set."
+            echo "::error::See docs/contributing/releasing.mdx for how to create it."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > localdrive/android/release.jks
+          cat > localdrive/android/key.properties <<EOF
+          storeFile=release.jks
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          EOF
+
+      - name: Build
+        working-directory: localdrive
+        run: |
+          flutter pub get
+          flutter build apk --release --build-name "${GITHUB_REF_NAME}"
+
+      - name: Check it is not debug signed
+        # keytool only reads the legacy v1 jar signature, and this apk carries
+        # none: Android signs with v2/v3 by default, so keytool always reports
+        # "Not a signed jar file" here regardless of what actually signed it.
+        # apksigner is the tool that understands v2/v3.
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME" -name apksigner -type f | sort -V | tail -1)
+          APK=localdrive/build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --print-certs "$APK" > signer.txt || {
+            echo "::error::apksigner could not verify this apk. Refusing to publish."
+            cat signer.txt
+            exit 1
+          }
+          cat signer.txt
+          if grep -q "CN=Android Debug" signer.txt; then
+            echo "::error::This apk is signed with the debug key. Refusing to publish."
+            exit 1
+          fi
+
+      - name: Name it
+        run: mv localdrive/build/app/outputs/flutter-apk/app-release.apk localdrive-client.apk
+
+      - name: Remove the signing material
+        if: always()
+        run: rm -f localdrive/android/release.jks localdrive/android/key.properties
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localdrive-client.apk
+          path: localdrive-client.apk
+          if-no-files-found: error
+
+  # -------------------------------------------------------- windows client
+  #
+  # Flutter produces a directory here, not a file: runner.exe plus its DLLs and
+  # a data folder. The exe alone does not launch, so the whole bundle is
+  # zipped. Anyone who wants a real installer can build one from this.
+  windows-client:
+    name: Client (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build
+        working-directory: localdrive
+        run: |
+          flutter pub get
+          flutter build windows --release --build-name "$env:GITHUB_REF_NAME"
+
+      - name: Zip the bundle
+        run: |
+          Compress-Archive `
+            -Path localdrive/build/windows/x64/runner/Release/* `
+            -DestinationPath localdrive-client-windows.zip
+
+      # Inno Setup is preinstalled on windows-latest, so there is nothing to
+      # fetch. It produces the ordinary setup.exe people expect; the zip stays
+      # for anyone who wants a folder they can carry rather than an install.
+      - name: Build the installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DAppVersion=$env:GITHUB_REF_NAME" `
+            localdrive\windows\installer.iss
+          Move-Item localdrive\windows\localdrive-client-setup.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localdrive-client-windows.zip
+          path: localdrive-client-windows.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localdrive-client-setup.exe
+          path: localdrive-client-setup.exe
+          if-no-files-found: error
+
+  # ---------------------------------------------------------- linux client
+  #
+  # Same story as Windows: a bundle directory, not a file. Tarred rather than
+  # zipped because a tar keeps the executable bit, and a Linux user who
+  # unzipped this would otherwise have to chmod it themselves.
+  linux-client:
+    name: Client (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev
+
+      - name: Build
+        working-directory: localdrive
+        run: |
+          flutter pub get
+          flutter build linux --release --build-name "${GITHUB_REF_NAME}"
+
+      - name: Tar the bundle
+        run: |
+          tar -czf localdrive-client-linux.tar.gz \
+            -C localdrive/build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localdrive-client-linux.tar.gz
+          path: localdrive-client-linux.tar.gz
+          if-no-files-found: error
+
+  # ------------------------------------------------------------- publish
+  publish:
+    name: Publish
+    needs: [server, android, windows-client, linux-client]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: assets
+        # one file listing every hash, so a download can be verified without
+        # trusting the transport
+        run: sha256sum * > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: assets/*

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the FileProvider is allowed to hand out.
+
+  Deliberately narrow: only the two directories this app writes files into.
+  A provider that exposes the whole of internal storage would also expose the
+  token store and the device database sitting next to it.
+-->
+<paths>
+    <!-- offline available copies -->
+    <files-path name="offline" path="offline/"/>
+    <!-- what a download landed as, on the platforms that keep it in app storage -->
+    <files-path name="downloads" path="Local Drive/"/>
+    <cache-path name="cache" path="."/>
+</paths>

@@ -1,0 +1,111 @@
+# Your data and your secrets. Never commit these.
+# A LocalDrive install keeps everything it owns under data/, so the whole
+# directory is ignored rather than named file by file: a new subdirectory
+# added later is ignored by default instead of leaking on the next commit.
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+.env
+.env.*
+!.env.example
+secrets.env
+*.pem
+*.key
+!**/testdata/**/*.key
+
+# Generated at init time from the machine it runs on
+server/Caddyfile
+server/docker-compose.yml
+server/.env
+
+# Backups
+*.tar.gz
+*.tar.zst
+*.bak
+backups/
+
+# Go
+/server/server
+/server/server.exe
+/server/server-arm64
+/server/localdrive
+/server/localdrive.exe
+*.exe~
+*.test
+*.out
+vendor/
+SHA256SUMS
+
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+localdrive/ios/Pods/
+localdrive/ios/Flutter/Flutter.framework
+localdrive/ios/Flutter/Flutter.podspec
+localdrive/ios/Flutter/Generated.xcconfig
+localdrive/ios/Flutter/flutter_export_environment.sh
+localdrive/ios/Flutter/ephemeral/
+localdrive/android/.gradle/
+localdrive/android/local.properties
+localdrive/android/key.properties
+# anywhere under android/, since CI writes the keystore beside key.properties
+# rather than in app/
+localdrive/android/**/*.jks
+localdrive/android/**/*.keystore
+localdrive/android/*.jks
+localdrive/android/*.keystore
+localdrive/android/github-secrets.txt
+localdrive/linux/flutter/ephemeral/
+localdrive/windows/flutter/ephemeral/
+localdrive/macos/Flutter/ephemeral/
+localdrive/macos/Pods/
+
+# Node, Next.js
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# The screenshot harness. Local tooling, not part of the product: the stills it
+# produces are committed under landing/public/showcase so the site builds
+# without it.
+capture/
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and scratch
+*.log
+tmp/
+.cache/
+
+# The built Flutter web client, dropped into the server's Caddy root. The
+# placeholder page and its readme are committed; the build output is not.
+server/web/*
+!server/web/README.md
+!server/web/index.html

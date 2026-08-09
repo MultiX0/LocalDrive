@@ -1,0 +1,104 @@
+---
+title: Authentication
+description: Tokens, refresh, device approval, and two factor.
+sidebar_position: 1
+---
+
+# Authentication
+
+## Tokens
+
+A successful sign in returns:
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "expires_at": 1730000000000,
+  "session_id": "...",
+  "user": { "id": "...", "username": "...", "role": "member" }
+}
+```
+
+Send the access token as `Authorization: Bearer <token>`. It lasts 15 minutes
+by default.
+
+## The four routes that also read the token from the query string
+
+A websocket handshake and a media element have the same problem: the browser
+builds the request itself and gives you nowhere to put a header. An `<img>` tag
+pointed at a private thumbnail cannot send one, so the thumbnail comes back
+`401` and the grid fills with placeholder icons.
+
+Four routes therefore accept `?access_token=<token>` as well as the header:
+
+| Route | Loaded by |
+| --- | --- |
+| `GET /api/v1/ws` | the websocket handshake |
+| `GET /api/v1/nodes/{id}/thumbnail` | an image element |
+| `GET /api/v1/nodes/{id}/preview` | an image element |
+| `GET /api/v1/nodes/{id}/download` | an image, video or audio element |
+
+Everything else takes the header only. The narrowness is the point: a token in
+a URL is written to browser history and to any proxy log on the way, so it is
+worth doing only where there is no alternative.
+
+The same rules still apply on those four. The token must be full scope, so a
+device waiting for approval cannot read a byte, and the account behind it still
+has to have access to the node. The server sends `Referrer-Policy: no-referrer`
+so a URL carrying one is never handed to a third party.
+
+A public share link is the exception that proves it. Those URLs are meant to be
+copied to people who have no account, so they carry a share token that grants
+one node and nothing else, and the client never signs them with a personal
+token.
+
+## Refreshing
+
+`POST /api/v1/auth/refresh` with `{"refresh_token": "..."}`.
+
+Refresh tokens **rotate and are single use**. A replayed one finds nothing to
+rotate and is rejected, which makes a stolen token useful only until
+the real client next refreshes.
+
+The client refreshes once on a 401 and replays the original request. Only one
+refresh runs at a time; every request that hit a 401 together waits on the same
+result.
+
+## A device waiting for approval
+
+When device approval is on, sign in returns `202` instead of `200`:
+
+```json
+{ "status": "pending", "session_id": "...", "access_token": "..." }
+```
+
+That token has a **pending** scope. It can call
+`GET /api/v1/auth/session/{id}/status` and nothing else; every other endpoint
+returns 403. Poll no faster than every four to five seconds. The moment it is
+approved, the same endpoint returns the real token pair.
+
+## Two factor
+
+If the account has TOTP enabled, sign in returns 401 with code `totp_required`.
+Send the same request again with `totp_code`.
+
+A single use recovery code is accepted in place of a code from the
+authenticator, and is consumed when used.
+
+## A temporary password
+
+An account with `must_change_password` set can call `PATCH /api/v1/me/password`
+and read only endpoints. Everything else returns 403 with code
+`must_change_password`.
+
+## Errors
+
+One envelope, every endpoint:
+
+```json
+{ "error": { "code": "forbidden", "message": "you do not have permission to do that" } }
+```
+
+The `message` is already a plain sentence written for a person to read. The
+`code` is what to branch on.

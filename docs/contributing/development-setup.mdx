@@ -1,0 +1,60 @@
+---
+title: Development setup
+description: Getting both halves running locally.
+sidebar_position: 1
+---
+
+# Development setup
+
+## Backend
+
+```
+cd server
+go test ./...
+go vet ./...
+go run ./cmd/localdrive serve
+```
+
+`serve` reads its settings from an install directory, so either run
+`localdrive setup` once or set the environment by hand. The integration suite
+needs nothing: it spins the whole server up against a temporary SQLite file and
+a temporary directory.
+
+Regenerate the committed `Caddyfile` and `docker-compose.yml` from the same
+renderers the setup tool uses:
+
+```
+go run gen_defaults.go
+```
+
+## Client
+
+```
+cd localdrive
+flutter pub get
+flutter gen-l10n
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+Regenerate the icon and splash rasters after touching the logo geometry:
+
+```
+dart run tool/generate_logo_assets.dart
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+```
+
+## Keeping the two in step
+
+The client's constants mirror the server's:
+
+| Client | Server |
+| --- | --- |
+| `core/constants/api_endpoints.dart` | the route table in `internal/httpapi/api.go` |
+| `core/constants/storage_keys.dart`, `WsEvents` | `internal/ws/events.go` |
+| `ApiClient.defaultPort` | `runner.DefaultPort` |
+| `core/enums/file_category.dart` | `internal/models/mime.go` |
+
+Change one, change the other.

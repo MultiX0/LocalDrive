@@ -1,0 +1,73 @@
+---
+title: Ports and addresses
+description: Why 7443, and how the server is reached with no domain.
+sidebar_position: 2
+---
+
+# Ports and addresses
+
+## Why 7443
+
+Local Drive serves on **port 7443**, not 443.
+
+A machine you self host on usually has other things on it, and 443 is the first
+port anything else will want. Taking it by default would make Local Drive the
+awkward neighbour on every machine it lands on. 7443 reads as "443, but ours",
+sits outside the range distributions hand to system services, and does not
+collide with anything common.
+
+Change it during setup, or by editing `LD_PORT` in `.env` and restarting.
+
+### 7443 is used twice, over two protocols
+
+| | Protocol | What it is |
+| --- | --- | --- |
+| 7443 | TCP | The server itself. This is the one that matters. |
+| 7443 | UDP | The discovery beacon, so the apps can find the server without being told an address. |
+
+The same number on purpose, so there is one to remember and one firewall rule
+to allow. Blocking the UDP half costs you discovery and nothing else: typing
+the address still works exactly the same. See
+[Finding the server](/architecture/discovery).
+
+## With no domain, which is the normal case
+
+Most people running this do not own a domain pointed at the machine. That is
+fine and fully supported:
+
+- The server is reached at whatever address the machine already has on the
+  network, for example `http://192.168.1.10:7443`.
+- That is plain HTTP, because no certificate authority issues certificates for
+  an address like that one. Traffic stays on your own network.
+- Set `LD_DOMAIN` if you have a domain pointing at the machine, and it becomes
+  real HTTPS with no warnings. See [HTTP and HTTPS](/self-hosting/https).
+
+The app also finds the server for you over mDNS, so in practice nobody types
+an address at all.
+
+## With a domain
+
+If you do own one, `localdrive setup` asks for it and switches to a publicly
+trusted certificate, renewed automatically. Set `LD_DOMAIN` and optionally
+`LD_TLS_EMAIL` for renewal notices.
+
+With a domain set, `PUBLIC_BASE_URL` is filled in and share links and invite
+links become absolute URLs to it. Without one there is no single correct
+address, since the same server answers on every address the machine has, so the
+app fills in whichever one it connected to.
+
+## What the client does with a typed address
+
+| Typed | Becomes | Why |
+| --- | --- | --- |
+| `192.168.1.10` | `http://192.168.1.10:7443` | A bare address means "my Local Drive server". |
+| `192.168.1.10:9000` | `http://192.168.1.10:9000` | An explicit port is respected. |
+| `https://192.168.1.10` | `https://192.168.1.10` | A full URL means exactly that URL. |
+| `nas.local` | `http://nas.local:7443` | A name that only resolves on this network cannot have a certificate. |
+| `drive.example.com` | `https://drive.example.com:7443` | A public domain can, so it gets HTTPS. |
+
+The scheme is guessed from the address, because that guess is right almost
+every time: IP addresses and names ending in `.local`, `.lan`, `.home` or
+`.internal` only exist on your network, and nothing can issue a certificate for
+them. Anything that looks like a public domain gets HTTPS. Type the scheme
+yourself to override either guess.

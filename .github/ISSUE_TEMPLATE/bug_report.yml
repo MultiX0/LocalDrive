@@ -1,0 +1,92 @@
+name: Bug report
+description: Something does not work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security problems here. Use
+        [private reporting](https://github.com/MultiX0/LocalDrive/security/advisories/new)
+        instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what it did instead of what you expected.
+      placeholder: |
+        I uploaded a 4 GB video from the Android app. The transfer reached
+        100% and then the file did not appear in the folder.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: >
+        If you can make it happen on demand, this is the most useful thing in
+        the whole report. If you cannot, say so and describe what you were
+        doing when it happened.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `localdrive version`.
+      placeholder: "0.0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How is the server running
+      options:
+        - Docker Compose
+        - The binary directly
+        - Built from source
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: server-os
+    attributes:
+      label: Server operating system
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: Which client
+      description: Leave blank if the problem is in the server or the CLI.
+      multiple: true
+      options:
+        - Android
+        - Windows
+        - Linux
+        - Web browser
+        - iOS
+        - macOS
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Output from `localdrive logs`, or the terminal the server is running
+        in. Redact anything private first.
+      render: text
+    validations:
+      required: false

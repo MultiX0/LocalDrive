@@ -1,0 +1,55 @@
+---
+title: Running without Docker
+description: Running the server directly on Windows, Linux, or macOS.
+sidebar_position: 3
+---
+
+# Running without Docker
+
+**This is the recommended way to run Local Drive.** One process, a few
+megabytes of memory, and a start measured in milliseconds. On modest hardware
+it is clearly the better choice, and the Docker daemon on its own costs more
+than this server does.
+
+What you give up is listed below, and it is short. Reach for Docker when you
+want one of those things, not by default.
+
+## Setting up
+
+Run `localdrive` and take the default when it asks how to run. Setup then:
+
+- Writes an `.env` with local filesystem paths rather than container paths.
+- Sets `LISTEN_ADDR` to the real port, since there is no proxy in front.
+- Leaves `MOUNT_HELPER_SOCKET` and `LAN_DISCOVERY_SOCKET` empty.
+
+## What you get
+
+Everything the API does: files, folders, versions, sharing, permissions,
+uploads, downloads, thumbnails, search, trash, activity, and the WebSocket.
+
+## What you do not get
+
+| Missing | Why | What to do instead |
+| --- | --- | --- |
+| HTTPS | Caddy is what terminates TLS | Put any reverse proxy in front, or use it on a trusted network |
+| Drive management from the app | `mount` and `mergerfs` are Linux tools run by a privileged helper | Mount the drive with the operating system and point `LIBRARY_PATH` at it |
+| Network discovery | The announcer needs host networking | Type the address in the app once; it is remembered |
+
+The server degrades cleanly for all three. Nothing errors; the features simply
+do not appear.
+
+## Running it
+
+```
+localdrive start
+```
+
+A native install runs in the foreground, on purpose. Installing a background
+service correctly on Windows and Linux are two very different jobs, and this
+tool does not pretend otherwise. Use the operating system's own mechanism:
+
+- **Linux**: a systemd unit calling `localdrive serve`.
+- **Windows**: Task Scheduler with "run whether user is logged on or not", or
+  a service wrapper.
+
+Set `LOCALDRIVE_HOME` in the unit or task so it finds its install.

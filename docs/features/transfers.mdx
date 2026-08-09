@@ -1,0 +1,121 @@
+---
+title: Transfers
+description: How uploads and downloads behave, where files land, and why nothing ever goes quiet.
+sidebar_position: 2
+---
+
+# Transfers
+
+The requirement in one sentence: a transfer never just goes quiet. It is
+queued, in progress, retrying with a visible reason, or failed with a clear
+reason and a retry button. There is no fourth, silent state.
+
+## The queue is the source of truth
+
+The moment something is enqueued, one file or four hundred photos, it is
+written to durable storage **before any network call starts**. If the app is
+killed a second later the intent survives, because the UI reads the same
+records the transfer engine works from.
+
+That storage is the device database rather than a file. Progress updates land
+many times a second per transfer, and rewriting a whole queue file for each one
+does not scale past a handful of items; a row update touches only the row that
+changed.
+
+## The state machine
+
+```
+queued -> in_progress -> retrying -> completed
+                      \-> failed
+```
+
+`retrying` uses exponential backoff with jitter, capped around a minute, and
+keeps going for anything plausibly transient: a dropped connection, a timeout,
+a 5xx.
+
+Anything that will never succeed on its own surfaces immediately as `failed`
+with its specific reason instead of retrying forever:
+
+| Reason | Retried |
+| --- | --- |
+| Network dropped, timeout, server error | yes |
+| Session expired | no |
+| Permission denied | no |
+| Quota exceeded | no |
+| File no longer on disk | no |
+
+## Network aware, not just failure aware
+
+A connectivity listener pauses the whole queue cleanly the moment the
+connection drops, rather than letting every in flight item discover it
+separately through a failed request, and resumes when it returns.
+
+## Resumability goes to the byte
+
+Uploads use tus and downloads use `Range`, so a retry continues from wherever
+the transfer actually stopped rather than from zero. That matters far more for
+a large video than the queue level retry policy does.
+
+The running SHA-256 is carried forward between chunks and persisted with the
+queue entry, so a resumed upload does not rehash what it already sent.
+
+## Where downloads go
+
+On a phone or tablet, into a `Local Drive` folder inside the app's own
+documents directory. On Windows, macOS and Linux, into a `Local Drive` folder
+inside the platform's own downloads directory. The transfers list names the
+exact location once a download finishes, because "done" with no location just
+makes someone go looking.
+
+Bytes land in a `.part` file and are only renamed into place once the whole
+file has arrived, so a killed app leaves a visible partial rather than a file
+that looks complete and is not. The next attempt resumes from exactly the byte
+that partial ends at.
+
+A second copy of the same name gets a numbered suffix rather than silently
+overwriting the first, the way a browser would do it.
+
+**In a browser tab there is no filesystem**, so the file is assembled in memory
+and handed to the browser as a blob at the end, which is where the browser's
+own download UI takes over. There is nothing to resume from there, and the
+download code knows that rather than sending a Range header that would quietly
+produce a corrupt file.
+
+Folders are not downloadable as a single file. There is no one stream of bytes
+for a folder, and silently downloading only its first file would be worse than
+not offering it.
+
+## Uploading from a browser
+
+Uploads work in a browser, with one difference that is worth knowing.
+
+Everywhere else the queue holds a path and reopens the file per chunk, which is
+what lets an upload survive closing the app and resume from the exact byte it
+stopped at. A browser has no path to hold: it hands over the file's contents
+instead. Those contents are kept in memory for the life of the upload and
+dropped the moment it finishes, fails, or is cancelled.
+
+So a browser upload resumes normally after a dropped connection, because the
+server is still the authority on how much it holds. It does **not** survive
+closing the tab, because the bytes went with it. Everywhere else, it does.
+
+That is also why a very large file is better sent from the desktop or phone
+app: a browser upload has to hold the whole file in memory, and those do not.
+
+## Bounded concurrency
+
+Three uploads and three downloads in flight at once by default, with the rest
+genuinely queued behind them. The two directions get their own budget rather
+than sharing one, so a long download queue cannot starve the photo you just
+sent. A bulk upload goes in waves rather than opening hundreds of connections
+and flattening a weak link.
+
+The server bounds this too, per account, so no single client can exhaust its
+file descriptors.
+
+## Visible, not just correct
+
+A persistent uploads tray shows aggregate state, for example "12 of 40
+uploaded, 2 need attention". Tapping it opens the full queue, where a failed
+item shows its own specific reason and its own retry button, never a generic
+message covering the whole batch.

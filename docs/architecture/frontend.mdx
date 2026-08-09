@@ -1,0 +1,163 @@
+---
+title: Frontend
+description: Flutter, the design system, and the responsive strategy.
+sidebar_position: 3
+---
+
+# Frontend
+
+## Structure
+
+Feature first for UI, type grouped for shared infrastructure:
+
+```
+lib/
+  core/        constants, enums, theme, router, services, utils, widgets
+  features/    <feature>/{db,models,controller,providers,pages,widgets}
+  l10n/        app_en.arb, app_ar.arb, glossary.md
+```
+
+The dependency direction is one way and never skips:
+
+```
+Page -> Provider / Controller -> Db -> ApiClient | WebSocketService
+```
+
+## The design system
+
+Dark, minimal, two brand accents and six file type tones. Every visible
+component is the app's own:
+
+| Instead of | Local Drive uses |
+| --- | --- |
+| `AlertDialog`, `showDialog` | `LdBottomSheet`, for every confirmation, form, picker, and menu |
+| `SnackBar` | `LdToast`, which brings its own transparent `Material` because it renders through an `Overlay` |
+| `CircularProgressIndicator` | `LdSpinner`, a dot ring |
+| `RefreshIndicator` | `LdRefresh`, whose pull fills the same dot ring |
+| `Switch`, `Checkbox`, `Radio` | `LdSwitch`, `LdCheckbox`, `LdRadioRow` |
+| Material icons | `LdIcon`, a drawn line set |
+| A bare spinner while a list loads | `LdListSkeleton` and `LdGridSkeleton`, shaped like the real rows |
+| An empty list rendering nothing | `LdEmptyState` |
+| `Text('Error: $e')` | `LdErrorState`, with retry bound to the call that failed |
+
+Typography is a function of the locale, not a static class. Space Grotesk for
+Latin, IBM Plex Sans Arabic for Arabic, resolved once at the `ThemeData` level
+so every widget reading `Theme.of(context).textTheme` gets the right face. No
+widget hardcodes a font, which is the specific way this normally goes wrong.
+
+## Responsive strategy
+
+`LdResponsive` is the single breakpoint decision point: mobile below 600,
+tablet 600 to 1024, desktop above 1024. A `*_page.dart` contains only that
+choice; the layouts live in `pages/mobile`, `pages/tablet`, and
+`pages/desktop`.
+
+Desktop is a genuinely different design, not the phone layout stretched:
+
+| | Mobile | Desktop |
+| --- | --- | --- |
+| Navigation | floating pill bar | persistent sidebar with quota footer |
+| Chrome | stacked header, then a toolbar | one slim top bar with everything inline |
+| Search | its own screen | a field in the top bar |
+| Selecting a file | pushes a full preview screen | opens a details pane beside the listing |
+| Settings | push one section, pop back | master and detail, both visible |
+| Drag and drop | not applicable | a visible drop zone over the listing |
+
+## State
+
+Riverpod, with `go_router` for navigation. The rules that matter:
+
+- Watch narrow, not wide. Small `ConsumerWidget` leaves, each watching only
+  what it renders, with `select` where a single field is enough.
+- Side effects use `ref.listen`, never a `.watch` used for rendering.
+- `flutter_hooks` for state that belongs to the widget rather than the app.
+- `RepaintBoundary` around anything that redraws on its own.
+- Every `AsyncValue` handled exhaustively through `LdAsync`.
+
+## The device database
+
+One Drift database holds everything device-local, in three tables:
+
+| Table | What it is |
+| --- | --- |
+| `cached_nodes` | The metadata cache. What each folder looked like the last time this device saw it, so it reloads instantly and stays browsable with no connection. |
+| `offline_items` | What this device has been told to keep offline, and where those bytes are. Never sent to the server. |
+| `queued_transfers` | The durable transfer queue. |
+
+One database rather than three, because all three are per-device state with the
+same lifetime: one file to open, one to migrate, and one to wipe on sign out.
+
+A cached row stores the whole server payload alongside the columns it indexes
+on, so a cached tile renders with every field the live one has rather than a
+stripped-down version of itself. A row that will not parse is skipped rather
+than taking the whole folder down with it.
+
+Caching is only ever a whole folder at a time, never row by row. A file deleted
+on another device has to disappear here too, and an upsert would leave it
+behind forever. A filter or a search is never cached: it is a question, not a
+place, and answering it from stale rows would be worse than saying the question
+needs a connection.
+
+## Previewing a file
+
+Image, video, audio, PDF, markdown, text, code, spreadsheets and documents all
+render inline. Anything else gets a type badge and a download button rather
+than an empty frame.
+
+| Type | How |
+| --- | --- |
+| Image | `photo_view`, pinch and pan |
+| Video | `media_kit` on libmpv, with the app's own controls. It streams by asking for byte ranges rather than downloading the file first, and starts on the first keyframe |
+| Audio | `media_kit`, the same player as video, with a drawn disc that turns while it plays |
+| PDF | `pdfrx` over the network with range access, so a two hundred page scan opens without downloading all of it first |
+| Markdown | Parsed with `markdown`, rendered with this app's own widgets |
+| Text, code | A bounded prefix of the file, so a log that has grown to hundreds of megabytes cannot take the app down |
+| Spreadsheet, document | Parsed here, in `features/preview/db/document_parser.dart` |
+
+Code keeps a line gutter and does not wrap, because a wrapped line of code is a
+lie about where the line breaks are. Prose and markdown get neither.
+
+**The office formats are parsed rather than delegated.** `.xlsx`, `.docx`,
+`.ods` and `.odt` are all a zip of XML, so `archive` plus `xml` covers every
+one of them and the reading stays ours to shape. That matters more than it
+sounds: a packaged viewer hands back its own widgets, and a spreadsheet in this
+app would then look like a spreadsheet in some other app. Parsing runs on a
+background isolate through `compute`, because unzipping twenty megabytes on the
+UI thread drops every frame until it finishes.
+
+**Markdown is parsed but not rendered by its package**, for the same reason.
+Parsing is a solved problem worth reusing; presentation is the point of
+the app and is not.
+
+Every one of these has a second path that reads from a local file instead of
+the network. That is what an offline available file takes, and it is why
+opening one costs nothing with the radio off.
+
+## Images
+
+Every remote image goes through `LdRemoteImage`, never a bare `NetworkImage`.
+It caches to disk, shows the app's own shimmer while it waits rather than an
+empty rectangle that pops, fades in rather than appearing, and decodes at the
+size it will be drawn at.
+
+That last one is not a nicety. A screenful of thumbnails decoded at full
+resolution is how a photo grid runs a device out of memory.
+
+A thumbnail that fails to load stays in its file type's colour rather than
+showing an error. The file is fine; only its preview is missing, and saying
+otherwise would be alarming for no reason.
+
+## The gallery
+
+A flat timeline rather than a folder listing, laid out as masonry so each
+picture keeps its own shape instead of being cropped to a square.
+
+The layout depends on the server recording pixel dimensions, which is what lets
+the grid settle before a single thumbnail arrives. Ordering defaults to capture
+time, which is a different field from upload time and the reason the server
+reads EXIF at all.
+
+Grouping into day, month or year headings only applies to a time-based order.
+Headings taken from a date over a list ordered by name would not match the
+order underneath them, so the option goes quiet instead.
+

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Local Drive: your own file server, on your own hardware.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#141414">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Local Drive">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+
+  <title>Local Drive</title>
+
+  <style>
+    /* the loading screen is the app's own, not flutter's default placeholder.
+       it is the first thing anyone sees, so it carries the brand rather than
+       a blank white frame. */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #141414;
+      color: #FFFFFF;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overscroll-behavior: none;
+    }
+
+    #ld-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      background: #141414;
+      z-index: 10;
+      transition: opacity 280ms cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
+    #ld-splash.ld-done {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* the same mark the app draws, at rest, so the handover is seamless */
+    #ld-mark {
+      width: 88px;
+      height: 88px;
+    }
+
+    #ld-mark .ld-arc {
+      stroke-dasharray: 40;
+      stroke-dashoffset: 40;
+      animation: ld-draw 1.6s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+    }
+
+    @keyframes ld-draw {
+      0%   { stroke-dashoffset: 40; opacity: 0.35; }
+      55%  { stroke-dashoffset: 0;  opacity: 1; }
+      100% { stroke-dashoffset: 0;  opacity: 0.35; }
+    }
+
+    /* the dot ring, the same shape the app uses everywhere else */
+    #ld-dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    #ld-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4C8DFF;
+      opacity: 0.25;
+      animation: ld-pulse 1.2s ease-in-out infinite;
+    }
+
+    #ld-dots span:nth-child(2) { animation-delay: 0.15s; }
+    #ld-dots span:nth-child(3) { animation-delay: 0.30s; }
+    #ld-dots span:nth-child(4) { animation-delay: 0.45s; }
+
+    @keyframes ld-pulse {
+      0%, 100% { opacity: 0.25; transform: scale(1); }
+      50%      { opacity: 1;    transform: scale(1.25); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #ld-mark .ld-arc, #ld-dots span { animation: none; }
+      #ld-dots span { opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+  <div id="ld-splash" role="status" aria-label="Loading Local Drive">
+    <svg id="ld-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <path d="M10 12 L24 12 L29 18 L54 18 Q58 18 58 22 L58 46 Q58 50 54 50
+        L10 50 Q6 50 6 46 L6 16 Q6 12 10 12 Z" fill="#2A6FD6"/>
+      <path d="M14 21 L50 21 Q52 21 52 23 L52 44 L12 44 L12 23 Q12 21 14 21 Z"
+        fill="#DCE3EE"/>
+      <path d="M10 26 L54 26 Q58 26 58 30 L58 46 Q58 50 54 50 L10 50
+        Q6 50 6 46 L6 30 Q6 26 10 26 Z" fill="#4C8DFF"/>
+      <path class="ld-arc" d="M25.5 41.5 A8 8 0 1 1 38.5 41.5" stroke="#FFFFFF"
+        stroke-width="3" stroke-linecap="round"/>
+      <circle cx="32" cy="38" r="3.2" fill="#FFFFFF"/>
+    </svg>
+
+    <div id="ld-dots" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <script>
+    // the splash fades out once flutter has painted its first frame, so there
+    // is never a flash of an empty page between the two
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('ld-splash');
+      if (!splash) return;
+      splash.classList.add('ld-done');
+      window.setTimeout(function () { splash.remove(); }, 320);
+    });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

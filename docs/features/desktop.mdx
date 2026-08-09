@@ -1,0 +1,83 @@
+---
+title: On a desktop
+description: Selection, drag and drop, menus, and the keyboard, on Windows, macOS and Linux.
+sidebar_position: 8
+---
+
+# On a desktop
+
+Local Drive is one app on five platforms, but a mouse is not a thumb. On a
+desktop it behaves like a file manager rather than a phone app stretched wide.
+
+## Selecting
+
+| Action | What it does |
+| --- | --- |
+| Click | Selects that one item |
+| Double click | Opens it |
+| Ctrl click, Cmd click on macOS | Adds or removes one item |
+| Shift click | Selects everything between the last item and this one |
+| Drag on empty space | Draws a box; everything it touches is selected |
+| Ctrl and A | Selects everything in the folder |
+| Escape | Clears the selection |
+| Delete or Backspace | Moves the selection to the trash, after a confirmation |
+
+A single click selects rather than opens, which is what Drive and Explorer do.
+Opening on a single click makes a mis-click cost a page load, and makes
+selecting several files impossible without a modifier.
+
+The selection bar and the details pane float over the listing rather than
+appearing beside or above it. That is deliberate: anything that changes the
+width of the grid reflows the tiles into a different number of columns, and the
+file you just clicked ends up somewhere else on the screen.
+
+## Dragging
+
+Dragging works in both directions.
+
+**Inside the app**, drag a file or folder onto a folder tile to move it into
+that folder. Dragging one item out of a selection moves just that item;
+dragging one that is part of the selection moves the whole selection. A folder
+lights up only if the move is actually possible, so a target that highlights
+never fails afterwards.
+
+**From the operating system**, drag files or folders from Explorer or Finder
+into the window. The whole window becomes a drop target while something is over
+it. Release over a folder tile to put the files inside it, or anywhere else to
+put them in the folder you are looking at.
+
+A dropped folder arrives as that folder, with its shape intact. Local Drive
+walks it, creates each folder on the server before anything inside it is
+uploaded, and sends every file to the right place. Nested folders keep nesting,
+and dropping several things at once works.
+
+Symbolic links are not followed. A link pointing back up its own tree would
+never finish, and one pointing outside the folder would upload files from
+somewhere nobody dropped.
+
+Dropping a folder needs the desktop app. A browser can only see inside a
+dropped folder through a different mechanism, which Local Drive does not use
+yet, so in a browser tab drop the files themselves rather than the folder.
+
+## Menus and dialogs
+
+Right click anything for its menu. It opens at the pointer as a small panel,
+the way a menu does on a desktop, rather than sliding up from the bottom of the
+window.
+
+Modals are centred dialogs rather than bottom sheets. This follows the machine
+and not the window size: a Local Drive window dragged narrow on Windows still
+has a mouse, a right button and a keyboard, so it still gets desktop controls.
+Layout follows the width it has; behaviour follows what is driving it.
+
+## Uploading something that is already there
+
+If a file being uploaded has a name the folder already uses, Local Drive asks
+once for the whole batch:
+
+- **Keep both** uploads it anyway. The server appends ` (2)` so both survive.
+- **Replace with the new one** uploads it as a new version of the file already
+  there, so the old bytes stay in version history rather than being lost.
+- **Skip these** leaves what is there alone.
+
+Nothing is silently duplicated and nothing is silently overwritten.

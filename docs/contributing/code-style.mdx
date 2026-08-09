@@ -1,0 +1,68 @@
+---
+title: Code style
+description: The guardrails, and the mistakes they exist to prevent.
+sidebar_position: 3
+---
+
+# Code style
+
+Most of these exist because they are the specific ways this kind of app
+normally goes wrong.
+
+## Dart
+
+**Never** use `AlertDialog`, `showDialog`, or an unstyled
+`showModalBottomSheet`. Every confirmation, form, picker, and menu is an
+`LdBottomSheet`.
+
+**Never** use `SnackBar`. Toasts are `LdToast`, which renders through an
+`Overlay` outside the page's own tree and therefore wraps its content in
+`Material(type: MaterialType.transparency)`. Skip that and text inside throws
+"No Material widget found". This is a common miss and it is handled once, in
+the component, so no caller has to remember.
+
+**Never** render nothing for an empty list, or a bare "No items". Every empty
+list is `LdEmptyState`.
+
+**Never** write `Text('Error: $e')`, and never let Flutter's red screen show.
+Every failure is `LdErrorState` with a retry bound to the call that actually
+failed, and `ErrorWidget.builder` is overridden globally for the ones nobody
+anticipated.
+
+**Never** hardcode a font family or call `GoogleFonts.*` inside a widget. Every
+text style resolves from `Theme.of(context).textTheme` at build time. A
+component that hardcodes its own font silently keeps using the wrong language's
+face forever, because nothing about a locale change ever touches it.
+
+**Never** import `dio`, `drift`, or `web_socket_channel` from a page or a
+widget.
+
+**Never** put business logic in a `build` method.
+
+## Riverpod
+
+- Watch narrow, not wide. A `build` that watches several providers at the top
+  of a large widget rebuilds all of it on any change, which is the single
+  biggest performance mistake available here.
+- Use `select` where only one field matters.
+- Side effects go in `ref.listen`, never as a consequence of a `.watch` used
+  for rendering.
+- `flutter_hooks` for state that belongs to the widget, not the app. Reaching
+  for a provider for local UI state is the same mistake in the other direction.
+- `RepaintBoundary` around anything that redraws on its own.
+
+## Go
+
+- `gofmt` and `go vet` clean. Both run in CI.
+- Errors are values with context: wrap with `%w` and a sentence.
+- Every mutating handler resolves the caller's role against the node. There is
+  no client that gets a shortcut.
+- No access returns 404, not 403.
+- Anything reaching the filesystem goes through `pathsafe`.
+- The helper never builds a shell command. Fixed argument lists only.
+
+## Copy
+
+Plain, direct English. Natural Arabic, checked against the glossary rather than
+translated from scratch. No filler and no marketing voice: say what the thing
+does.

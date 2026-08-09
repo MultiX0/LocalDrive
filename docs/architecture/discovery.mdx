@@ -1,0 +1,120 @@
+---
+title: Finding the server
+description: How the apps find a server on the network, and why there are two mechanisms rather than one.
+sidebar_position: 6
+---
+
+# Finding the server
+
+Typing an IP address is a poor first experience, so the apps look for servers
+on the network during onboarding. There are two mechanisms doing that, and the
+second one exists because the first is not dependable.
+
+The address field is always there regardless. Discovery is a convenience, never
+a requirement, and finding nothing is a normal outcome rather than an error.
+
+## mDNS, and why it is not enough
+
+The obvious mechanism is mDNS: the server publishes `_localdrive._tcp` and the
+app browses for it. Plenty of software already speaks it, so it is worth
+having.
+
+It fails, silently, whenever something else on the machine already holds UDP
+5353:
+
+- **Windows runs its own mDNS responder.** A second process can bind the port,
+  and even report success, but the queries are delivered to the operating
+  system's responder, which knows nothing about this service. The record is
+  published and never answered.
+- **A container has its own network namespace**, so multicast never reaches the
+  real network without host networking.
+
+Both look identical from the app: an empty list beside a server that is running
+perfectly well. That is the worst kind of failure, because there is nothing to
+report and nothing to fix.
+
+## The beacon
+
+So the apps ask instead of listening.
+
+The client sends one small UDP packet to the broadcast address. Every server
+that hears it answers with how to reach it. There is no multicast group to join
+and no responder to compete with, so it works the same on a wired network, on
+wifi, and on a phone's hotspot.
+
+**Port 7443, UDP.** Deliberately the same number as the HTTP port, one being
+UDP and the other TCP, so there is one number to remember and one firewall rule
+to allow.
+
+The probe is a fixed string:
+
+```
+LOCALDRIVE-PROBE/1
+```
+
+The reply is JSON:
+
+```json
+{
+  "magic": "LOCALDRIVE-HELLO/1",
+  "server_id": "3b2fb8cb-9377-4378-ae37-c2c6e914414a",
+  "name": "Local Drive",
+  "version": "0.0.1",
+  "port": 7443,
+  "tls": false,
+  "ready": true
+}
+```
+
+Anything that does not start with the probe string is ignored rather than
+answered, and anything without the reply magic is discarded by the client.
+
+### What the reply deliberately does not contain
+
+Every device on the network can send a probe, including ones with no account on
+the server. So the reply carries only what is needed to draw a row and connect
+to it: a name, a version, a port, and whether storage is configured yet.
+
+No user count, no file count, no account names, nothing about what the server
+holds.
+
+### Where the probe is sent
+
+The global broadcast address is refused on some networks, and a hotspot often
+puts the phone on a different subnet from the one it reaches. So the probe goes
+to the global address, to loopback, and to each interface's own broadcast
+address. Duplicate answers from one server across several interfaces are
+collapsed by `server_id`.
+
+A /24 prefix is assumed when working out an interface's broadcast address,
+because Dart does not expose the real netmask and home networks are /24 almost
+without exception. A wrong guess costs one ignored packet.
+
+## Both run together
+
+The app sends the beacon probe first and browses mDNS alongside it. Results
+merge into one list, keyed by `server_id`, so a server answering both ways
+appears once.
+
+Under Docker the mDNS half moves to the `lan-discovery` helper container, which
+has host networking; the server hands it advertisements over a unix socket.
+Running the binary directly there is no namespace in the way, so the server
+does both itself and no helper is involved.
+
+## Turning it off
+
+**Settings, Server** has a switch. With discovery off the server stops
+answering probes and withdraws its mDNS record, and anyone connecting has to
+know the address. The setting is per server and takes effect immediately.
+
+## When discovery finds nothing
+
+All of these look the same from the app, which is why it says "nothing found"
+rather than guessing:
+
+- The devices are on different subnets, or on guest wifi that isolates clients
+- A firewall is dropping UDP 7443
+- Discovery has been switched off on that server
+- The server is not running
+
+The address field beside the list works in every one of those cases.

@@ -1,0 +1,170 @@
+---
+title: Where your data lives
+description: The exact folder your files and database are in, and what happens to them when the server stops or the binary is deleted.
+sidebar_position: 2
+---
+
+# Where your data lives
+
+Short version: your data is in a folder, that folder is not inside the binary,
+and nothing that happens to the binary can touch it.
+
+## The install folder
+
+Everything Local Drive owns lives under one directory. If you did not pick one,
+it is the platform's own location for this kind of thing:
+
+| Platform | Default |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\LocalDrive` |
+| Linux | `$XDG_DATA_HOME/localdrive`, otherwise `~/.local/share/localdrive` |
+| Linux, running as a system service | `/var/lib/localdrive` |
+
+Set `LOCALDRIVE_HOME` to put it somewhere else, or pass `--dir` to any command.
+To see the one actually in use:
+
+```
+localdrive status
+```
+
+Inside it:
+
+```
+Caddyfile              only used by Docker
+docker-compose.yml     only used by Docker
+.env                   configuration, and the paths below
+data/
+  db/
+    localdrive.sqlite  accounts, folder names, share links, device list
+    secrets.env        the keys that sign tokens and encrypt at rest
+  library/             your actual files
+  external/            drives you attached
+```
+
+Two directories matter. `data/db/` is the database, and `data/library/` is
+every file anyone has uploaded. Those two are your data. Everything else in the
+folder is regenerable.
+
+## The database and the files are separate things
+
+This is the distinction worth being clear about, because they have very
+different sizes and very different homes.
+
+| | What it is | How big | Where it goes |
+| --- | --- | --- | --- |
+| `data/db/` | Accounts, folder names, share links, which device is approved, and where every file is | Megabytes | Stays in the install folder |
+| `data/library/` | The files themselves | As large as your files | Anywhere you point it |
+
+The database holds no file contents. It records that a file exists, who owns
+it, and which library it is on. So the install folder stays small no matter how
+much you store, and the storage that actually needs room can live on a
+different disk entirely.
+
+That matters on Windows in particular, where the default install folder is
+under `%LOCALAPPDATA%`. Nobody wants a photo library there. It is a fine place
+for a few megabytes of database, and the wrong place for 400 GB of video, which
+is why the two are not tied together.
+
+## Choosing where files go, from the app
+
+**Settings, Storage** is the admin view of this, and no terminal is involved.
+It lists this server's own storage, every other library that has been
+registered, and any drives it has detected.
+
+- A plugged in drive shows **Use this drive**, which mounts it and registers it
+  as a library.
+- Each library shows its own used, free and total space.
+- Any library can be marked **Default**, which is where new uploads go.
+
+So the ordinary answer to "where are my files" is: on whichever library is
+default, which is the install folder until you point it somewhere better. See
+[External drives](/getting-started/external-drives) for the full flow,
+including combining drives and ejecting safely.
+
+Drive detection and mounting need the mount helper, which is Linux under
+Docker. On Windows, mount the drive in Windows first and then point
+`LIBRARY_PATH` at it, as below.
+
+## The binary is not where your data is
+
+The server executable holds no data. It reads its location from `.env` at
+startup and writes into `data/`, which sits beside it rather than inside it.
+
+That makes all of the following true:
+
+- **Stopping the server loses nothing.** SQLite commits each change before
+  reporting it as done, so what has been written is on disk before the process
+  ends. Stop it with `localdrive stop`, with Ctrl-C, or by pulling the power,
+  and it comes back with the same contents.
+- **Deleting the binary loses nothing.** You have deleted a program, not a
+  library. Download it again, put it back, and it picks up the same `data/`
+  folder.
+- **Upgrading loses nothing.** `localdrive update` replaces only the
+  executable, and keeps the previous one beside it. See
+  [Updating](/self-hosting/updating).
+- **Moving to another machine is a copy.** Move the folder, put a binary next
+  to it, start it. Nothing is registered anywhere else on the system, so there
+  is nothing to migrate.
+
+The only way to lose your data is to delete `data/` yourself, or to delete the
+folder holding it.
+
+## Docker changes nothing about this
+
+Both ways of running use the same folder on the same disk.
+
+Docker sees different path names for it, because a container has its own view
+of the filesystem: the host's `data/db` appears inside the container as
+`/data/db`. Compose sets those container paths itself, and `.env` holds the
+real host paths, so the same install works whichever way you start it and
+neither writes anywhere the other cannot read.
+
+Nothing is stored in a Docker volume that only Docker can reach. `docker
+compose down`, or uninstalling Docker entirely, leaves `data/` untouched, and
+the plain binary will open it.
+
+## Checking for yourself
+
+```
+localdrive status
+```
+
+prints the install folder and the database path. Then look:
+
+```
+ls data/library
+du -sh data
+```
+
+On Windows:
+
+```powershell
+Get-ChildItem data\library
+```
+
+## Backing it up
+
+Because it is one folder, a backup is a copy of one folder. `localdrive backup`
+does it consistently while the server is running, which a plain file copy of a
+live database does not guarantee.
+
+```
+localdrive backup
+```
+
+See [Backups](/self-hosting/backups) for scheduling and restoring.
+
+## Putting the library on another disk
+
+The library is usually the large part, and it does not have to sit with the
+database. Point `LIBRARY_PATH` in `.env` at any path the server can write to:
+
+```
+LIBRARY_PATH=/mnt/storage/localdrive/library
+```
+
+Move the existing contents there before restarting, or the server will start
+with an empty library and files already in the database will not resolve.
+
+Under Docker, add a mount for the new location in `docker-compose.yml` as well,
+since the container can only see paths that have been mapped into it.

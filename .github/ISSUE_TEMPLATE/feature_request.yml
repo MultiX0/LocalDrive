@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest something the project should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth reading [What it is not](https://localdrive.iprog.dev/docs)
+        first. Some things are missing on purpose, and it saves everyone time
+        to know which.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: >
+        Describe the situation you are in, not the feature you have in mind.
+        A problem can often be solved several ways, and the best one is not
+        always the first one anybody thinks of.
+      placeholder: |
+        I share a folder with my family and cannot tell who uploaded what,
+        so when something is wrong I have no idea who to ask.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: Optional. If you already have a shape for it, describe it.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: >
+        Existing features you tried, or workarounds you are using now. This
+        often shows whether the gap is a missing feature or a discoverability
+        problem.
+    validations:
+      required: false

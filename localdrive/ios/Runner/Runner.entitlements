@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The app group is what the Share Extension writes into and the app reads
+	  out of. An extension runs in its own process with its own container, so
+	  without a shared group there is no way to hand a file across at all.
+
+	  Replace the team prefixed identifier if you ship under your own account.
+	-->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.app.localdrive</string>
+	</array>
+
+	<!--
+	  Universal Links. Only useful for a server that has a real domain and
+	  serves an apple-app-site-association file from it. Add one entry per
+	  server you want links verified for; a server on a bare IP falls back to
+	  the localdrive:// scheme, which always works.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+	</array>
+</dict>
+</plist>

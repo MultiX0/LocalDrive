@@ -1,0 +1,22 @@
+.env
+data/
+
+# the built flutter web client lands here. the placeholder page and its readme
+# are committed; everything the build drops in is not. excluding web/ itself
+# would make those two unreachable, since git cannot re-include a file under an
+# excluded directory.
+web/*
+!web/README.md
+!web/index.html
+
+*.exe
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/server
+/mount-helper
+/lan-discovery
+/setup-cli
+/local-drive-setup
+dist/
+.DS_Store

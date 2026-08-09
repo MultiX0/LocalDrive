@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://localdrive.iprog.dev/docs
+    about: Setup, self hosting, backups and troubleshooting.
+  - name: Question or idea
+    url: https://github.com/MultiX0/LocalDrive/discussions
+    about: For anything that is not a bug report or a specific proposal.
+  - name: Report a security vulnerability
+    url: https://github.com/MultiX0/LocalDrive/security/advisories/new
+    about: Private. Please do not open a public issue for this.

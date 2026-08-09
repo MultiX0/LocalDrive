@@ -1,0 +1,126 @@
+---
+title: HTTP and HTTPS
+description: Why the default is plain HTTP, what that costs, and how to turn on real HTTPS when you have a domain.
+sidebar_position: 3
+---
+
+# HTTP and HTTPS
+
+Local Drive serves plain HTTP by default. That is a deliberate choice for a
+server on your own network, and it is reversible in one line the moment you
+have a domain.
+
+## Why not HTTPS by default
+
+HTTPS needs a certificate, and a certificate is an assertion about a **name**.
+No certificate authority will issue one for `192.168.1.42`, because nobody owns
+that address and it means something different on every network in the world.
+
+The usual workaround is a certificate the server signs itself. It sounds
+harmless and it is not, because nothing trusts it:
+
+- **Browsers** interrupt every visit with a full page warning. People learn to
+  click through security warnings, which is worse than the problem it solves.
+- **The app** does not warn, it refuses. An HTTP client rejects an untrusted
+  certificate outright, so a perfectly healthy server looks exactly like one
+  that is down, with no way to tell the difference from inside the app.
+- **Android** ignores user installed certificate authorities for app traffic
+  from Android 7 onwards, so even importing the certificate by hand does not
+  fix the app.
+
+A self signed certificate on a LAN address does not buy security, it buys a
+habit of dismissing warnings. So the default is honest instead: plain HTTP,
+clearly labelled, on a network you control.
+
+## What plain HTTP actually costs
+
+Worth stating rather than glossing over.
+
+- **Traffic is readable to anyone on the same network.** On a home network with
+  a password on the Wi-Fi, that is you and your household. On a shared office
+  network, university network, or open Wi-Fi, treat it as public.
+- **Passwords and tokens are part of that traffic.**
+- **Browsers restrict some features to secure contexts.** Service workers are
+  the one that shows: the web client will not install as an offline app over
+  plain HTTP on a LAN address. It works normally over `localhost` and over
+  HTTPS. The Android, Windows and Linux apps are unaffected, since none of them
+  are browsers.
+
+If any of that describes your situation, turn HTTPS on. It takes a domain and
+one line.
+
+## Turning on HTTPS
+
+You need a domain name pointing at the machine. A subdomain of something you
+already own is fine, and it does not have to be reachable from the internet if
+you use the DNS challenge.
+
+Set it in `.env` in the install folder:
+
+```
+LD_DOMAIN=drive.example.com
+LD_TLS_EMAIL=you@example.com
+```
+
+Then regenerate the proxy config and restart:
+
+```
+localdrive init --force
+localdrive restart
+```
+
+Caddy takes it from there: it requests a certificate from Let's Encrypt, serves
+HTTPS, and renews on its own. `LD_TLS_EMAIL` is only used for expiry notices
+and can be left out.
+
+Check it:
+
+```
+localdrive status
+```
+
+The addresses it prints turn into `https://` once a domain is set.
+
+### Ports
+
+Let's Encrypt's HTTP challenge needs port 80 reachable from the internet at the
+time of issue. If that is not possible, use the DNS challenge instead, which
+proves ownership through a DNS record and needs no inbound port at all. That
+requires a Caddy build with your DNS provider's plugin; see the
+[Caddy documentation](https://caddyserver.com/docs/automatic-https).
+
+### Without Docker
+
+The bare binary speaks HTTP and does not terminate TLS. That is not a missing
+feature so much as a separate job: certificate issue and renewal is what Caddy
+is for, and reimplementing it inside the server would be a worse version of it.
+
+To run bare with HTTPS, put any reverse proxy in front of it, point that at the
+server's port, and let the proxy hold the certificate. See
+[Running without Docker](/getting-started/without-docker).
+
+## Reaching it from outside your network
+
+Opening a port to the internet is the part worth slowing down on, and it is
+where HTTPS stops being optional.
+
+Two options that avoid opening anything:
+
+- **A VPN**, such as WireGuard or Tailscale. The server stays entirely private,
+  you connect to your own network, and plain HTTP is fine because the tunnel is
+  already encrypted. This is the simplest safe answer.
+- **A tunnel** such as Cloudflare Tunnel, which gives you a real hostname and a
+  real certificate without a port forward.
+
+If you do forward a port, set `LD_DOMAIN` and use HTTPS. Local Drive requires
+device approval by default, so a new device cannot get in on a password alone,
+but that is not a reason to send passwords in the clear across the internet.
+
+## Summary
+
+| Situation | What to use |
+| --- | --- |
+| Your own network, home or small office | Plain HTTP, the default |
+| Shared or untrusted network | HTTPS with a domain |
+| Reaching it from outside | A VPN, or HTTPS with a domain |
+| A browser, and you want the offline web app | HTTPS with a domain |

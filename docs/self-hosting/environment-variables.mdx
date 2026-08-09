@@ -1,0 +1,125 @@
+---
+title: Environment variables
+description: Every setting, what it does, and which ones are runtime editable instead.
+sidebar_position: 2
+---
+
+# Environment variables
+
+Every value is read once at process start and validated with a clear error
+naming whatever is missing or malformed.
+
+**You do not have to set any of this.** `docker compose up -d` works on a fresh
+clone with no `.env` at all, and `localdrive setup` or `localdrive init` writes
+a complete one for you. This page is for when you want to change something.
+
+A commented file listing every variable with its default ships in the
+repository at [`server/.env.example`](https://github.com/MultiX0/LocalDrive/blob/main/server/.env.example).
+Copy it to `.env` and edit, or read it alongside this page.
+
+## Two that are read before `.env` is
+
+These are looked up in the process environment only. Putting them in `.env`
+cannot work, because they are what the server uses to decide where `.env` is.
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `LOCALDRIVE_HOME` | The platform's own data directory | The install folder. Everything else, including `.env` and `data/`, is found relative to this. |
+| `LD_SECRETS_DIR` | Beside the database | Where generated secrets are written. Worth changing only if the database lives somewhere you would rather not keep keys. |
+
+`LOCALDRIVE_HOME` is the one to reach for when running as a system service,
+where the account has no home directory of its own. See
+[Keeping it running](/self-hosting/running-always).
+
+## Secrets are generated, not typed
+
+`JWT_SECRET`, `MOUNT_HELPER_SHARED_SECRET`, and `LAN_DISCOVERY_SHARED_SECRET`
+are created on first start if they are not already set, and written to
+`data/db/secrets.env` with owner only permissions. Each mixes fresh randomness
+with an identifier unique to that machine, so two installs never share one.
+
+They are written down rather than regenerated each start, because a signing key
+that changed on every restart would invalidate every token in existence.
+
+Setting any of them in the environment overrides the generated one. Deleting
+the file regenerates them, which signs everyone out.
+
+## How it is reached
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `LD_PORT` | `7443` | The one port everything serves on |
+| `LD_DOMAIN` | empty | Leave empty unless you own one |
+| `LD_TLS_EMAIL` | empty | Renewal notices, only with a domain |
+| `PUBLIC_BASE_URL` | empty | Absolute base for share and invite links |
+| `CORS_ALLOWED_ORIGINS` | empty | Exact origins, comma separated, never `*` |
+
+## Process
+
+| Variable | Default |
+| --- | --- |
+| `APP_ENV` | `production` |
+| `LOG_LEVEL` | `info` |
+| `LISTEN_ADDR` | `:8080` |
+
+## Storage
+
+| Variable | Default |
+| --- | --- |
+| `DB_PATH` | `/data/db/localdrive.sqlite` |
+| `LIBRARY_PATH` | `/data/library` |
+| `EXTERNAL_MOUNTS_PATH` | `/data/external` |
+| `DATA_DIR` | `./data` (host side) |
+
+## Helpers
+
+| Variable | Notes |
+| --- | --- |
+| `MOUNT_HELPER_SOCKET` | Empty disables drive management |
+| `MOUNT_HELPER_SHARED_SECRET` | At least 16 characters when the socket is set |
+| `LAN_DISCOVERY_SOCKET` | Empty disables network announcing |
+| `LAN_DISCOVERY_SHARED_SECRET` | At least 16 characters when the socket is set |
+
+## Authentication
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `JWT_SECRET` | none | **Required**, at least 32 characters, rejected if it looks like a placeholder |
+| `ACCESS_TOKEN_TTL` | `15m` | |
+| `REFRESH_TOKEN_TTL` | `30d` | Accepts a `d` suffix |
+| `ARGON2_MEMORY_KIB` | `65536` | 64 MB per hash in flight; raise if you have RAM |
+| `ARGON2_TIME` | `2` | |
+| `ARGON2_THREADS` | `2` | |
+
+## Limits
+
+| Variable | Default |
+| --- | --- |
+| `MAX_UPLOAD_CONCURRENCY` | `4` |
+| `WORKER_POOL_SIZE` | `2` |
+| `MAX_READ_CONNS` | `4` |
+| `DEFAULT_QUOTA_BYTES` | `0`, meaning unlimited |
+| `TRASH_RETENTION_DAYS` | `30` |
+| `VERSION_RETENTION_COUNT` | `20` |
+| `VERSION_RETENTION_DAYS` | `180` |
+
+## Seeds, not settings
+
+These three only apply the **first** time the server starts. After that they
+live in the database and are changed in **Settings, Server**, because deciding
+later to open or close signups should be a normal setting change rather than a
+redeploy.
+
+| Variable | Default |
+| --- | --- |
+| `ENABLE_LAN_DISCOVERY_DEFAULT` | `true` |
+| `REQUIRE_DEVICE_APPROVAL_DEFAULT` | `true` |
+| `ALLOW_SELF_REGISTRATION_DEFAULT` | `false` |
+
+## Optional
+
+| Variable | Notes |
+| --- | --- |
+| `ENCRYPTION_KEY` | Turns on per file encryption at rest; incompatible with the browsable mirror |
+| `METRICS_ENABLED` | Exposes `/metrics` in Prometheus text format |
+| `LOCALDRIVE_FETCH_FFMPEG` | Set to `false` to stop the server fetching `ffmpeg` by itself. See [Requirements](/self-hosting/requirements) |

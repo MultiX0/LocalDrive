@@ -1,0 +1,54 @@
+---
+title: Backups
+description: What to copy, how, and how to restore.
+sidebar_position: 3
+---
+
+# Backups
+
+## What to copy
+
+Two things, and they must be taken together:
+
+1. **The database**, at `DB_PATH`. It holds the folder tree, ownership,
+   permissions, versions, shares, sessions, and the activity log.
+2. **The library**, at `LIBRARY_PATH`. It holds the actual bytes.
+
+A library without its database is a directory of files named after their
+checksums. A database without its library is a catalogue of things that are not
+there. Neither alone is a backup.
+
+## The easy way
+
+```
+localdrive backup /path/to/backups
+```
+
+This writes a timestamped folder containing both. It is a plain copy, no rsync
+required, so it works the same on Windows and Linux.
+
+## As a scheduled job
+
+**Linux**, in a crontab:
+
+```
+15 3 * * * /usr/local/bin/localdrive backup /mnt/backup/localdrive
+```
+
+**Windows**, as a Task Scheduler action running `localdrive backup D:\Backups`.
+
+`scripts/backup.sh` is also available, which uses SQLite's `VACUUM INTO` for
+the database and `rsync` for the library where those are present.
+
+## Restoring
+
+1. Stop the server: `localdrive stop`.
+2. Put the database file back at `DB_PATH`.
+3. Put the library directory back at `LIBRARY_PATH`.
+4. Start it: `localdrive start`.
+
+## With a combined drive
+
+A pooled library adds capacity, not redundancy. If one member drive fails, the
+files that happened to land on it are gone while the rest keep working. That
+makes backups **more** important with a pool in use, not less.

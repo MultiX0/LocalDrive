@@ -1,0 +1,108 @@
+---
+title: Gallery
+description: Every photo and clip in one timeline, ordered by when it was actually taken.
+sidebar_position: 3
+---
+
+# Gallery
+
+Every picture and clip you can reach, in one flat stream, ordered by when it
+was taken.
+
+Folders are how files are organised. A gallery is how photos are looked at.
+Mixing the two would make it neither, so this is deliberately not a folder
+listing with a filter on it: there are no folders in the gallery at all.
+
+## Ordered by when it was taken
+
+The default order is capture time, read out of the file's own metadata, not
+upload time.
+
+Those are genuinely different. A photo taken in 2019 and uploaded today has an
+upload time of today, and a gallery sorted by that puts it at the top, which is
+wrong. The server reads the capture time when it first processes the file and
+stores it separately.
+
+Anything with no capture time, a screenshot or a download, falls back to when
+it was uploaded. Without that fallback every one of them would pile up at one
+end of the timeline.
+
+You can also order by date added, date modified, name, or file size.
+
+## Headings
+
+The timeline is broken into runs with a heading over each: by day, by month
+(the default), or by year. The two most recent days say "Today" and
+"Yesterday" rather than a date, because on a photo timeline that is what they
+almost always are.
+
+Headings stay pinned while their own section is on screen, so it is always
+clear which month is being looked at.
+
+Grouping only applies to a time-based order. Sorting by file size and then
+grouping by month would produce headings that do not match the order underneath
+them, so the option goes quiet rather than offering something that cannot be
+drawn.
+
+## The grid
+
+Masonry, not squares. A square grid crops every photo to fit, and a panorama
+then looks like a close-up of its middle. Each picture keeps its own shape.
+
+That is only possible because the server records pixel dimensions when it
+processes an image, so the grid lays itself out correctly before a single
+thumbnail has arrived. The difference is a grid that settles instantly versus
+one that reflows for a second every time it opens.
+
+Rotation is accounted for: a photo whose stored pixels are a quarter turn from
+how it is meant to be seen gets its dimensions swapped, so it does not land in
+a landscape slot.
+
+**Changing the tile size.** Pinch on a phone. On desktop there is a row of
+size steps in the top bar, because a mouse has no pinch and a hidden keyboard
+shortcut is not a control.
+
+## Looking at one
+
+Tapping a photo grows it out of its own tile into full screen, at full
+resolution rather than the grid's thumbnail. The entire reason for opening a
+photo is to look at it properly.
+
+Swipe sideways to move through the gallery in the order it was showing. Tap
+once to hide the chrome and see the picture with nothing on top of it.
+
+The bar underneath carries share, download, keep offline, and star, and the
+line above it says when the photo was taken.
+
+## Selecting several
+
+Long press on a phone, or click while a selection is active. Selected photos
+can be downloaded in one action.
+
+Sharing stays one at a time. A share grants a specific person access to a
+specific item, so a multi-select share would be several separate decisions
+wearing one button, and the app says so rather than pretending otherwise.
+
+## Videos
+
+Clips live in the gallery alongside photos, marked with a small badge and their
+own play affordance. They were taken on the same day with the same device, and
+splitting them into a separate screen would be the app imposing a distinction
+nobody thinks in.
+
+## Images are cached
+
+Every remote image in the app, in the gallery and everywhere else, is fetched
+once and then read from disk. Scrolling back up a grid does not re-download a
+thumbnail that was on screen ten seconds ago.
+
+While an image is loading its slot shows the app's own shimmer in the brand's
+greys, and the image fades in rather than popping. Thumbnails are decoded at
+roughly the size they are drawn at, because a screenful of full-resolution
+decodes is how a photo grid runs a phone out of memory.
+
+## Offline
+
+A photo kept on this device shows a small mark in its corner and opens from
+local bytes with no connection at all. See
+[Offline availability](/features/offline-availability).

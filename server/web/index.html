@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Local Drive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: grid; place-items: center;
+    background: #141414; color: #fff;
+    font: 15px/1.6 ui-sans-serif, system-ui, sans-serif;
+  }
+  main { max-width: 34rem; padding: 2rem; }
+  h1 { font-size: 1.25rem; margin: 0 0 .75rem; }
+  p { color: #909090; margin: 0 0 1rem; }
+  code {
+    background: #0e0e0e; border: 1px solid #3d3d3d;
+    border-radius: 6px; padding: .1rem .4rem; font-size: 13px;
+  }
+  pre {
+    background: #0e0e0e; border: 1px solid #3d3d3d; border-radius: 12px;
+    padding: 1rem; overflow-x: auto; font-size: 13px; color: #fff;
+  }
+  a { color: #4c8dff; }
+</style>
+<main>
+  <h1>The server is running</h1>
+  <p>
+    The web client has not been built into this install, so there is no browser
+    interface to show. The API is working: try
+    <code>/api/v1/status</code>.
+  </p>
+  <p>Build it, if you want one:</p>
+  <pre>cd localdrive
+flutter build web --release
+cp -r build/web/* ../server/web/</pre>
+  <p>
+    Or use the Android, Windows, Linux or macOS app, which is the usual way in.
+    <a href="https://localdrive.iprog.dev/download">Downloads</a>
+  </p>
+</main>

@@ -1,0 +1,78 @@
+---
+title: Quick start
+description: Get a server running in a few minutes with the setup tool.
+sidebar_position: 1
+---
+
+# Quick start
+
+Everything is one executable, `localdrive`, for Windows, Linux, and macOS.
+
+## Run it
+
+```
+localdrive
+```
+
+With no arguments it runs setup. It asks:
+
+1. **Where to keep everything.** One folder holds the configuration, the
+   database, and the files.
+2. **How to run.** Directly on the machine by default, which is lighter. Docker if you want https, drive management or network discovery.
+3. **Which port.** The default is 7443. See [Ports and addresses](./ports-and-addresses).
+4. **Whether you have a domain.** Most people do not, and do not need one.
+5. **An admin username and password.**
+
+Then it generates every secret, writes its own configuration, starts the
+server, and prints the addresses to open along with a QR code to scan from a
+phone.
+
+## Day to day
+
+```
+localdrive status     where it is, and whether it is up
+localdrive start      start it
+localdrive stop       stop it
+localdrive restart    restart it, which is also how a setting change lands
+localdrive logs       follow the log
+localdrive backup     copy the database and the library somewhere safe
+localdrive reset-admin  recover a forgotten admin password
+```
+
+Every command takes `--dir` to point at a specific install, and reads
+`LOCALDRIVE_HOME` when it is set.
+
+## No configuration needed
+
+`docker compose up -d` works on a fresh clone with no `.env` file at all.
+
+The first time the server starts it generates the secrets it needs, mixing
+fresh randomness with an identifier unique to that machine, and writes them to
+`data/db/secrets.env` with owner only permissions. The two helper containers
+read the same file, mounted read only, which is how they agree on a shared
+secret nobody had to type.
+
+Anything you do set in the environment always wins, so an operator who manages
+their own secrets is never overridden.
+
+To write a full configuration up front without answering any questions:
+
+```
+localdrive init
+```
+
+That creates `.env`, `Caddyfile`, `docker-compose.yml`, and the secrets, then
+stops. Run `docker compose up -d` or `localdrive start` afterwards. It works
+the same on Windows, macOS, and Linux.
+
+## Connect the app
+
+Open the app, and on the connect step it scans your network and lists any
+server it finds. Tap one. If discovery finds nothing, which is normal on a
+different subnet or behind a firewall, type the address instead.
+
+## Next
+
+- [Running without Docker](./without-docker)
+- [External drives](./external-drives)
+- [Ports and addresses](./ports-and-addresses)

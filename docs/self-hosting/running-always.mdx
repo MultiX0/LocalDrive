@@ -1,0 +1,253 @@
+---
+title: Keeping it running
+description: Running in the background, starting at boot, and calling localdrive from anywhere.
+sidebar_position: 6
+---
+
+# Keeping it running
+
+A server you have to start by hand is not a server. This is how to make it come
+back on its own after a reboot, on each platform, and how to make the
+`localdrive` command work from any directory.
+
+Every command here has been run rather than written from memory.
+
+## With Docker, which is the short answer
+
+`docker compose up -d` already does this. The `-d` detaches it, and the restart
+policy brings it back after a reboot or a crash.
+
+```
+cd server
+docker compose up -d
+```
+
+Check on it, and follow what it is doing:
+
+```
+localdrive status
+localdrive logs
+```
+
+Stopping it is deliberate, and it stays stopped until you say otherwise:
+
+```
+localdrive stop
+```
+
+Nothing else is needed. Docker starts with the machine, and Compose starts the
+containers. If Docker Desktop on Windows is not coming back after a reboot, see
+[Troubleshooting](/self-hosting/troubleshooting), because that is usually the
+autostart setting rather than anything to do with this.
+
+## Without Docker, on Linux
+
+`localdrive serve` runs in the foreground and stops when the terminal closes.
+systemd is what keeps it alive.
+
+Create `/etc/systemd/system/localdrive.service`:
+
+```
+[Unit]
+Description=Local Drive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=localdrive
+Group=localdrive
+Environment=LOCALDRIVE_HOME=/var/lib/localdrive
+ExecStart=/usr/local/bin/localdrive serve
+Restart=always
+RestartSec=5
+
+# it needs its own data directory and nothing else on the disk
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/localdrive
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Make the account it runs as, then start it:
+
+```
+sudo useradd --system --home /var/lib/localdrive --shell /usr/sbin/nologin localdrive
+sudo mkdir -p /var/lib/localdrive
+sudo chown localdrive:localdrive /var/lib/localdrive
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now localdrive
+```
+
+Check it, and watch the log:
+
+```
+systemctl status localdrive
+journalctl -u localdrive -f
+```
+
+`Restart=always` covers a crash as well as a reboot. `ProtectSystem=strict`
+with a single `ReadWritePaths` means that if the process is ever compromised it
+can write to its own data directory and nowhere else on the machine.
+
+The `Environment` line is load bearing. `LOCALDRIVE_HOME` decides where the
+database and library go, and without it the server would write beside the
+binary in `/usr/local/bin`, which `ProtectSystem=strict` has made read only.
+
+The port needs no line here. 7443 is the default. Set `LISTEN_ADDR` only if you
+want a different one.
+
+This service has no `.env` and does not need one. On first start it creates its
+own database and generates its own secrets under `LOCALDRIVE_HOME`.
+
+Confirm it is actually listening, rather than just running:
+
+```
+curl -s http://127.0.0.1:7443/healthz
+```
+
+Running bare like this costs you three things, cleanly and with no errors:
+HTTPS, drive management, and network discovery. See
+[Running without Docker](/getting-started/without-docker).
+
+## Without Docker, on Windows
+
+Windows has no systemd. The right tool is **Task Scheduler**, which can start a
+program at boot with no one logged in.
+
+**Do not use `sc.exe create` for this.** A Windows service has to answer the
+Service Control Manager within about thirty seconds of starting, and
+`localdrive` is an ordinary console program that does not. The service would
+register, fail to start, and give you an error that says nothing useful. Making
+it work needs a wrapper such as NSSM or WinSW; Task Scheduler needs nothing.
+
+Run this in an **administrator** PowerShell, with the path changed to wherever
+you put the binary:
+
+```powershell
+schtasks /create `
+  /tn "Local Drive" `
+  /tr "'C:\Program Files\LocalDrive\localdrive.exe' serve" `
+  /sc onstart `
+  /ru SYSTEM `
+  /rl HIGHEST `
+  /f
+```
+
+Start it now without waiting for a reboot, and check it:
+
+```powershell
+schtasks /run /tn "Local Drive"
+schtasks /query /tn "Local Drive" /v /fo LIST | Select-String "Status|Last Result"
+```
+
+To stop it, or remove it:
+
+```powershell
+schtasks /end /tn "Local Drive"
+schtasks /delete /tn "Local Drive" /f
+```
+
+`/ru SYSTEM` makes it run without anyone signed in. Because SYSTEM has
+a different profile to yours, set `LOCALDRIVE_HOME` to an absolute path so the
+service and your own terminal agree on where the data lives:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  'LOCALDRIVE_HOME', 'C:\ProgramData\LocalDrive', 'Machine')
+```
+
+Set it before creating the task, since a task picks up the environment as it
+was when it started. The port needs nothing: 7443 is the default.
+
+Check it is actually answering, not merely running:
+
+```powershell
+curl.exe -s http://127.0.0.1:7443/healthz
+```
+
+## Running localdrive from anywhere
+
+Out of the box you have to be in the folder containing the binary and type
+`.\localdrive.exe`. Putting it on the PATH makes `localdrive` work from any
+directory in any terminal.
+
+### Linux
+
+`/usr/local/bin` is already on the PATH on every distribution, so this is the
+whole job:
+
+```
+sudo install -m 755 localdrive /usr/local/bin/localdrive
+localdrive version
+```
+
+Open a new terminal if the old one does not find it immediately.
+
+### Windows
+
+Put the binary somewhere permanent first, then add that folder to your PATH:
+
+```powershell
+New-Item -ItemType Directory -Force "C:\Program Files\LocalDrive" | Out-Null
+Move-Item .\localdrive.exe "C:\Program Files\LocalDrive\" -Force
+
+$dir  = "C:\Program Files\LocalDrive"
+$path = [Environment]::GetEnvironmentVariable('PATH', 'User')
+if ($path -notlike "*$dir*") {
+  [Environment]::SetEnvironmentVariable('PATH', "$path;$dir", 'User')
+}
+```
+
+Open a **new** terminal, then:
+
+```powershell
+localdrive version
+```
+
+**Do not use `setx PATH` for this.** `setx` truncates anything past 1024
+characters, and a normal Windows PATH is longer than that already, so it will
+silently cut the end off yours and break whatever was at the end. The
+`[Environment]::SetEnvironmentVariable` call above has no such limit. To see
+how close you are:
+
+```powershell
+[Environment]::GetEnvironmentVariable('PATH','User').Length
+```
+
+### Checking it worked
+
+From a directory that is not the one holding the binary:
+
+```
+localdrive version
+localdrive status
+```
+
+`version` prints the version, the platform and the Go build. `status` prints
+where the install is, which port it is on, and whether anything is answering.
+
+## Which one to pick
+
+| Situation | Use |
+| --- | --- |
+| Linux | systemd, running the binary |
+| Windows | Task Scheduler at startup, running the binary |
+| You want HTTPS, drive management or network discovery | Docker Compose |
+| Just trying it out | `localdrive serve` in a terminal |
+
+**Run the binary unless you need what Docker adds.** It is one process instead
+of three, it starts in well under a second, and it holds a fraction of the
+memory. On an old laptop, a Raspberry Pi, or anything with 1 GB of RAM, that
+difference is the difference between comfortable and not: the Docker daemon
+alone costs more than the entire Local Drive server does.
+
+Docker earns its place when you want automatic HTTPS through Caddy, drive
+management, or network discovery, because those are separate services and the
+bare binary cannot provide them alone. If none of those matter to you, the
+binary is the better answer.

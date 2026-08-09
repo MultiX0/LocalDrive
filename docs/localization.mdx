@@ -1,0 +1,85 @@
+---
+title: Localization
+description: How English and Arabic are kept honest.
+sidebar_position: 6
+---
+
+# Localization
+
+Two languages, both first class: English and Arabic.
+
+## How it works
+
+`flutter gen-l10n` over ARB files in `lib/l10n/`. Full RTL support for Arabic,
+including mirrored directional icons and layout direction, set during
+onboarding and changeable any time in Settings.
+
+## Typography
+
+Space Grotesk was designed for Latin script and has no Arabic glyphs, so one
+font for the whole app was never really an option once Arabic is first class
+rather than an afterthought.
+
+The pairing is **IBM Plex Sans Arabic**: a real typographic choice with the
+same engineered, geometric character, rather than falling back to something
+generic. The two read as a deliberate pair.
+
+`LdTypography` is a function of the locale, not a static class. It resolves the
+whole named scale for `en` or `ar` and is applied once at the `ThemeData`
+level, so every widget reading `Theme.of(context).textTheme` gets the right
+face with no exceptions to remember.
+
+Both load through `google_fonts`, which fetches on first use and caches after
+that. The very first run in Arabic with no network yet renders in the
+platform's default face for a moment before the real one swaps in. That is
+expected and intentional, not a bug.
+
+## The glossary
+
+Arabic terminology was checked against Google Drive's own Arabic interface
+rather than translated from scratch, so it reads naturally rather than
+machine translated.
+
+| English | Arabic |
+| --- | --- |
+| My Files | ملفاتي |
+| New folder | مجلد جديد |
+| Upload | رفع |
+| Download | تنزيل |
+| Share | مشاركة |
+| Shared with me | ‏المشتركة معي |
+| Recent | حديثًا |
+| Starred | المميزة بنجمة |
+| Trash | سلة المهملات |
+| Restore | استعادة |
+| Storage | مساحة التخزين |
+| Settings | الإعدادات |
+| Search | بحث |
+| Activity | النشاط |
+| Devices | الأجهزة |
+| Sign in | تسجيل الدخول |
+| Create account | إنشاء حساب |
+| Permanently delete | حذف نهائيًا |
+| Pending approval | بانتظار الموافقة |
+| Approve | الموافقة |
+| Deny | رفض |
+| Link expiration | تاريخ انتهاء الصلاحية |
+| Never expires | لا تنتهي صلاحيته |
+| Set up this server | إعداد الخادم |
+| Invite | دعوة |
+| Admin | المشرف |
+| Member | عضو |
+| Reset password | إعادة تعيين كلمة المرور |
+| Nearby | بالقرب منك |
+| Available offline | متاح دون اتصال |
+| Downloads on this device | التنزيلات على هذا الجهاز |
+
+The full glossary lives at `localdrive/lib/l10n/glossary.md`. Check new strings
+against it before adding them, so tone stays consistent as the app grows.
+
+## Adding a string
+
+1. Add it to `app_en.arb` with a plain, direct English value.
+2. Add it to `app_ar.arb`, checking the glossary for anything it reuses.
+3. Run `flutter gen-l10n`.
+4. Reference it as `L10n.of(context).yourKey`. Never inline a literal.

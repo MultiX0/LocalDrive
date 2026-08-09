@@ -1,0 +1,64 @@
+---
+title: Sharing
+description: Public links, sharing with people on the same server, and nearby.
+sidebar_position: 1
+---
+
+# Sharing
+
+Two distinct things, kept distinct in the UI because they are distinct in
+consequence.
+
+## People
+
+Sharing with another account on the same server. The share sheet's People mode
+lists every account as a face and a name. Tap one, pick view or edit, done.
+Nothing in it is a text field, so nobody has to know a username.
+
+- Access is immediate and works on every device that person owns.
+- Revoking removes the permission row. There is no link to rotate.
+- A shared item appears in the recipient's blended Home view and in their
+  Shared tab, with the owner's avatar as a corner badge, because a face and a
+  name answer "whose file is this" faster than an icon.
+
+## Link
+
+A public, tokenized URL for anyone without an account.
+
+| Setting | Notes |
+| --- | --- |
+| Password | Optional, hashed, never logged |
+| Expiry | Presets or an exact date and time |
+| Download | Allowed, or view only |
+
+All three are editable in place, without changing the URL, so a link you have
+already sent stays the same while what it permits changes.
+
+Expiry is enforced on **every single access**, in the same request that would
+serve the file. The background sweep exists for hygiene and the audit trail
+only, so a slow sweep never leaves an expired link working.
+
+Every access is written to the activity log.
+
+## Nearby
+
+While the share sheet is open, the app advertises a small presence beacon over
+the platform's own service discovery. Other Local Drive apps on the same
+network see it directly, with no server round trip needed just to know who is
+around. Anyone nearby sorts above everyone else in the picker with a live
+indicator.
+
+What this does **not** change: the share is still a permission grant against
+the central server, still governed by the same matrix, still visible on every
+device the recipient owns. Local Drive does not do a peer to peer beam that
+bypasses the server, because that would hand the other person a one off copy
+rather than an ongoing shared item.
+
+The beacon only broadcasts while a sharing screen is actually open, both for
+battery and because advertising your presence at all times is not something an
+app should do without asking. iOS asks for Local Network permission the first
+time, behind a sheet explaining why before the system prompt appears.
+
+Browsers cannot do raw multicast, so the web app always uses the plain picker.
+That is correct behaviour, not a bug, the same way AirDrop has no browser
+equivalent.

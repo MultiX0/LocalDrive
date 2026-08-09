@@ -1,0 +1,125 @@
+---
+title: Storage and drives
+description: Libraries, quotas, and what happens when a drive goes away.
+sidebar_position: 7
+---
+
+# Storage and drives
+
+## Libraries
+
+A library is one storage root. There can be several at once:
+
+| Kind | What it is |
+| --- | --- |
+| `internal` | This server's own disk |
+| `external` | A drive you plugged in |
+| `network` | A mounted network share |
+| `pooled` | Several drives combined with `mergerfs` |
+
+Each shows its own used, free, and total space. Total and free are read live
+from the operating system on every request, never cached, because a stale
+number for disk space is actively misleading. Used is a running counter updated
+in the same transaction as the write that changed it.
+
+One library is marked **Default** and receives new top level uploads.
+
+## Libraries never span
+
+A folder's library is fixed when it is created, and everything inside inherits
+it. A folder never spans two libraries. This is what keeps the object store
+simple: each library owns exactly one `objects/` directory and nothing
+references across a boundary.
+
+Moving within a library is the cheap metadata only operation. Moving to a
+different library is a real copy then delete, shown with progress like any
+other background job, never silently instant.
+
+## Quotas
+
+Per account, in bytes. Zero means unlimited, which is the sensible default on
+your own hardware.
+
+The check happens at upload **creation** time, before a single byte is
+accepted, so an over quota upload is refused immediately rather than after a
+long transfer. The counter is transactional; a periodic pass recalculates it as
+a correctness check rather than as the hot path.
+
+## What the storage figures in the sidebar mean
+
+Two numbers sit at the bottom of the sidebar, and they are deliberately
+measuring different things.
+
+**Used is your own files, and nobody else's.** It is the total size of the
+files this account owns, counted from the account's own rows and nothing
+wider. It is not what Local Drive is storing in total, and it is certainly not
+what the machine's disk is holding. Two people on the same server see two
+different used figures, and one of them filling their share never makes the
+other person's number move.
+
+**Free is the disk, which everyone shares.** There is one pool of space and
+every account draws from it, so this figure is the same for everybody and it
+moves whenever anybody uploads or deletes. It is what the disk can still
+accept, not a share reserved for you.
+
+That is also why the sidebar never shows the disk's total size. A 500 GB drive
+is mostly the operating system and everything else on the machine; presenting
+it as Local Drive's capacity would be meaningless. The bar is drawn against
+your used plus what is actually still available, so it answers "how close am I
+to not being able to upload" rather than "how full is this computer".
+
+### When you have a quota
+
+The space you can still use is the **smaller** of two limits: what is left of
+your quota, and what is left on the disk.
+
+A 100 GB quota is not 100 GB of headroom when the disk has 2 GB left. In that
+situation the sidebar shows 2 GB and says the disk is lower than your quota,
+because the alternative is a number that promises space the server cannot
+give you.
+
+Lowering an account's quota below what it already stores is allowed, and shows
+as full with zero remaining rather than as a negative figure. Nothing is
+deleted; that account simply cannot add more until it is under the new limit or
+the limit is raised.
+
+## What an admin sees
+
+An ordinary account sees its own usage and the shared free space. Nothing else.
+
+**Settings, Users** gives an admin the server-wide view: every account with how
+much it is storing, and its quota where one is set. That is what answers "who
+filled the disk", which is not a question anyone can answer from their own
+figure alone.
+
+**Settings, Storage** gives the other half: each library, its total size, and
+what is free on it.
+
+### This is a size, not a look inside
+
+An admin sees **how much** an account stores. An admin does not see **what** it
+stores.
+
+There is no admin file browser, no way to open somebody else's folder, and no
+back door that resolves another account's files. Access is decided from
+ownership and shares alone, and the role is not consulted: an admin reaching for
+another account's file gets the same refusal anybody else would.
+
+That is deliberate, and it is the line the whole permission model is drawn on.
+An admin runs the server. Running the server is not the same as reading what
+people put on it.
+
+What an admin can do is administrative and visible: change a quota, reset a
+password, change a role, or remove an account. A password reset does not reveal
+anything either; it issues a temporary password that must be changed on the
+next sign in, so it cannot be used quietly.
+
+If you need someone's files, ask them to share the folder. That is what sharing
+is for, and it leaves a record.
+
+## When a drive goes away
+
+Covered fully in [External drives](../getting-started/external-drives). In
+short: it is treated as a normal condition, the library is marked offline, one
+clear error is returned instead of unrelated failures, the app shows a banner,
+and every other library keeps working.

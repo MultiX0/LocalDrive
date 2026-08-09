@@ -1,0 +1,79 @@
+---
+title: Requirements
+description: What Local Drive needs to run, and what the 1 GB target means.
+sidebar_position: 1
+---
+
+# Requirements
+
+## The target
+
+Local Drive is built to run comfortably on a **1 GB RAM** machine. That target
+shapes real decisions:
+
+- SQLite rather than Postgres, so there is no second process to run and tune.
+- No Redis. The Linux page cache already keeps recently read files in RAM,
+  using whatever memory is actually free, and evicting under real pressure
+  rather than on a TTL.
+- Two background workers by default.
+- Files are streamed with a fixed 32 KB copy buffer. The server never buffers a
+  whole file in memory, in either direction.
+- `mem_limit: 512m` on the server container, leaving room for the OS, the
+  proxy, the two tiny helpers, and the filesystem cache, which is where
+  SQLite's page cache benefit actually comes from.
+
+## Minimum
+
+| | |
+| --- | --- |
+| CPU | Any 64 bit x86 or ARM |
+| RAM | 1 GB |
+| Disk | Enough for your files, plus a little for the database and thumbnails |
+| OS | Linux for the full feature set, Windows or macOS for everything except drive management |
+
+## Recommended
+
+| | |
+| --- | --- |
+| RAM | 2 GB, which lets you raise `ARGON2_MEMORY_KIB` |
+| Disk | SSD for the database directory, anything for the library |
+
+## Optional tools
+
+`ffmpeg` and `pdftoppm` give video and PDF thumbnails. Both ship in the
+container image. If either is absent the server looks for it once at startup,
+logs what it found, and skips those jobs cleanly: the file keeps its type
+badge, and nothing is treated as an error.
+
+Two places are searched, in this order:
+
+1. Anywhere on `PATH`.
+2. The directory holding the Local Drive binary.
+
+The second exists because a self hosted server is often a binary dropped in a
+folder rather than something a package manager installed. Putting `ffmpeg` next
+to `localdrive` is easier than editing the system `PATH`, and it travels with
+the folder if it moves.
+
+### Fetching ffmpeg automatically
+
+When `ffmpeg` is missing on Windows or Linux, the server downloads a build for
+its own platform and puts it beside the binary. It happens once, in the
+background, so the server answers requests immediately while it runs, and the
+download is verified by running it before anything is allowed to use it.
+
+Set `LOCALDRIVE_FETCH_FFMPEG=false` to switch this off. Fetching an executable
+at runtime is something some operators will forbid outright, and that should be
+one variable rather than an argument with the software.
+
+macOS is deliberately not fetched. The published builds are unsigned, so
+Gatekeeper quarantines them and the first run fails in a way that looks like a
+broken app rather than a missing tool. Install it with Homebrew there:
+
+```
+brew install ffmpeg
+```
+
+Thumbnails are made when a file is uploaded, so anything already on the server
+from before `ffmpeg` arrived keeps its type badge. Upload it again to get a
+preview.

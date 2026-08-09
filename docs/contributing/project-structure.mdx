@@ -1,0 +1,58 @@
+---
+title: Project structure
+description: Where things live, and the rules about it.
+sidebar_position: 2
+---
+
+# Project structure
+
+Four directories, each one thing.
+
+## The repository
+
+```
+LocalDrive/
+  server/        the Go backend, which is the product
+  localdrive/    the Flutter client, one codebase for every platform
+  docs/          this documentation
+  landing/       the website, which reads docs/ directly
+  README.md
+```
+
+## The backend
+
+```
+server/
+  cmd/localdrive/     the one entry point
+  internal/
+    runner/           every mode the binary runs in
+    config/           environment loading and validation
+    httpapi/          chi routes and handlers
+    auth/             passwords, tokens, sessions, invites, 2fa, recovery
+    files/            the node tree, access resolution, maintenance
+    shares/           public links and account to account grants
+    libraries/        storage roots, disk stats, offline detection
+    storage/          the content addressed object store and the browse mirror
+    uploads/          the tus DataStore
+    thumbnails/       generator dispatch and capability probing
+    ws/               the hub, clients, event types
+    jobs/             worker pool and scheduler
+    db/               sqlite setup, migrations, the writer goroutine
+    audit/            the activity log
+    middleware/       recovery, logging, cors, rate limiting
+    models/           row shapes shared by every package
+  pkg/
+    pathsafe/         canonicalization and traversal guard, tested in isolation
+    checksum/
+  migrations/
+```
+
+## Conventions
+
+- Shared logic lives in one place. A validation rule, a formatter, or a widget
+  is not written twice.
+- Add abstraction when a second concrete use case needs it, not before.
+- Every user facing string goes in both `app_en.arb` and `app_ar.arb`, checked
+  against `l10n/glossary.md` first.
+- Comments explain why, not what. If a comment restates the line below it,
+  cut it.

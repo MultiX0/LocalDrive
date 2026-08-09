@@ -1,0 +1,54 @@
+---
+title: Introduction
+description: What Local Drive is, what it is not, and how the pieces fit.
+sidebar_position: 1
+---
+
+# Introduction
+
+Local Drive is a private alternative to Google Drive that runs on a machine you
+own. One Go binary serves the API and stores files on a local disk, a network
+share, or an external drive you plug in. Any number of Flutter clients, phone,
+tablet, desktop, or browser, point at that one server and talk to it over a
+plain REST and WebSocket API.
+
+## What it is
+
+- A file server with folders, versions, trash, search, and sharing.
+- Multi user, with real permissions enforced server side on every request.
+- Self hosted first: no account with anyone, no domain required, no cloud
+  dependency of any kind.
+
+## What it is not
+
+- Not a sync client. Local Drive stores files on a server and hands them to
+  clients on request. Offline availability is a per device choice, not a
+  whole disk mirror.
+- Not a peer to peer file beam. Sharing goes through the server so the other
+  person keeps access next week from a different device, which is the entire
+  point of sharing through a Drive rather than over Bluetooth.
+- Not a place to drop files into by hand. Storage is content addressed, so
+  writing into the backing directory from outside the app is unsupported, the
+  same way you cannot add a file to Google Drive by writing into its bucket.
+
+## The pieces
+
+| Piece | What it does |
+| --- | --- |
+| `server` | The Go backend. One binary, several modes. |
+| `localdrive` | The Flutter client. One codebase, every platform. |
+| `docs` | This documentation. |
+
+## Where to go next
+
+- [Quick start](./getting-started/quick-start) to get a server running.
+- [Architecture overview](./architecture/overview) for how it is built.
+- [Security](./architecture/security) for the permission and privilege model.
+- [Platform integration](./architecture/platform-integration) for what each
+  platform does natively, and what each can honestly promise.
+- [Gallery](./features/gallery) for how photos are browsed.
+- [File previews](./features/file-previews) for what opens inline.
+- [Offline availability](./features/offline-availability) for keeping files on
+  a device.
+- [Nearby sharing](./features/nearby-sharing) for why sharing with someone in
+  the same room feels instant.

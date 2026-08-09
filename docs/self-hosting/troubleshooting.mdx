@@ -1,0 +1,234 @@
+---
+title: Troubleshooting
+description: The failures people actually hit, and what each one means.
+sidebar_position: 4
+---
+
+# Troubleshooting
+
+## The app cannot find the server
+
+Discovery legitimately finds nothing on a different subnet, when the server has
+announcing turned off, or behind a firewall that blocks multicast. This is
+never an error; type the address instead.
+
+Check the server is answering at all:
+
+```
+localdrive status
+```
+
+## The browser says the site is not secure
+
+With no domain the server speaks plain HTTP, and browsers label that "Not
+secure" in the address bar. It is a statement about HTTP, not a sign anything
+is broken, and there is no warning page to click through.
+
+Set `LD_DOMAIN` to a domain pointing at the machine and Caddy gets a real
+certificate on its own. See [HTTP and HTTPS](/self-hosting/https).
+
+## The app says it cannot reach a server that is definitely running
+
+Check whether you typed `https://`. If the server has no domain it is serving
+HTTP, and an HTTPS request to it fails during the handshake, which looks
+identical to the server being down. Drop the `s`, or connect by IP and let the
+app pick the scheme.
+
+## Compose warns that a variable is not set
+
+You are on an older version of this project. Update it: the compose file now
+carries defaults for every variable, and the server generates its own secrets,
+so `docker compose up -d` needs no `.env` at all.
+
+## Docker will not start on Windows
+
+Almost always this is not a broken installation. Docker Desktop simply is not
+running, and its Windows service is set to start on demand, so nothing has
+asked it to since the machine booted.
+
+Confirm it in PowerShell:
+
+```
+sc query com.docker.service
+```
+
+`STATE : 1 STOPPED` with `WIN32_EXIT_CODE : 1077` means the service has never
+been started this boot. 1077 is `ERROR_SERVICE_NEVER_STARTED`, which is a
+statement of fact rather than a failure.
+
+Check the start type too:
+
+```
+sc qc com.docker.service
+```
+
+`START_TYPE : 3 DEMAND_START` confirms it only runs when something asks. Docker
+Desktop is what asks.
+
+The fix is to launch Docker Desktop and wait for the whale icon in the system
+tray to stop animating. To stop it recurring, open Docker Desktop's settings
+and turn on **Start Docker Desktop when you sign in**.
+
+The binary does this for you:
+
+```
+localdrive setup
+```
+
+It checks whether the engine is reachable, launches Docker Desktop if it is
+installed but not running, waits for it, and explains what to do if it cannot.
+Every command that needs Compose does the same check first, so you get a
+sentence rather than a connection error.
+
+### Docker was moved to an external drive that is now unplugged
+
+A specific and easy to miss case. Moving Docker's disk image to another drive
+leaves a junction behind on `C:`, and when that drive is detached the link
+resolves to nothing. Docker Desktop's window still opens, so it looks like a
+Docker problem rather than a missing disk. The logs say `backend is not
+running` and the API proxy returns empty errors.
+
+Check for it:
+
+```
+dir "%LOCALAPPDATA%\Docker\wsl"
+```
+
+A line reading `<JUNCTION>  disk [D:\...]` is the cause. Confirm the target is
+gone with `dir D:\`.
+
+Two ways out. Attach the drive, and it works again immediately. Or move Docker
+back to internal storage:
+
+1. Quit Docker Desktop, then `wsl --shutdown`.
+2. Remove the link, and only the link:
+
+   ```
+   rmdir "%LOCALAPPDATA%\Docker\wsl\disk"
+   ```
+
+   Use `rmdir`, not PowerShell's `Remove-Item`. On a directory junction
+   `Remove-Item` can follow the link and delete what is on the other side.
+3. Start Docker Desktop. It builds a fresh data disk on `C:`.
+
+Nothing on the external drive is deleted by this. Images, containers and
+volumes stay where they are, and Docker simply stops looking there, so a fresh
+`docker compose up` re-pulls what it needs. To keep the old content instead,
+attach the drive and copy the folder back to
+`%LOCALAPPDATA%\Docker\wsl\disk` before step 3.
+
+While you are in there, check whether the same move left a `DataFolder` entry
+pointing at a path that no longer exists, in
+`%APPDATA%\Docker\settings-store.json`. Deleting that one line returns it to
+the default.
+
+### If it still does not come up
+
+Docker Desktop on Windows runs the engine inside WSL2. Check that side:
+
+```
+wsl -l -v
+```
+
+You should see `docker-desktop` in the list. `Stopped` is normal before Docker
+Desktop starts; missing entirely means the WSL integration needs repairing from
+Docker Desktop's settings. If WSL itself is not installed:
+
+```
+wsl --install
+```
+
+That needs a restart, and Docker Desktop will not run without it.
+
+### Running without Docker instead
+
+Nothing here is required. The server is a single binary and runs on its own:
+
+```
+localdrive serve
+```
+
+See [Running without Docker](/getting-started/without-docker) for the details.
+
+## The server will not start
+
+The most common cause is a configuration problem, and it says so specifically.
+`JWT_SECRET` missing or too short, a placeholder value, or a malformed
+duration each produce a named error rather than a crash.
+
+```
+localdrive logs
+```
+
+## A drive is not showing up
+
+- Drive management is **Linux only**. On Windows or macOS, mount the drive with
+  the operating system and point a library at it.
+- Under Docker, the helper runs behind a profile:
+  `docker compose --profile drives up -d`.
+- Without the helper, use `scripts/setup-automount.sh` once on the host.
+
+## A library says it is offline
+
+The backing device is not where it was. Plug it back in and it returns to
+available on its own. Everything else keeps working in the meantime.
+
+## Uploads keep retrying
+
+Look at the queue. A transient reason retries with backoff, which is correct.
+A non transient one, an expired session, a permission error, a full quota, is
+shown as failed with that specific reason rather than retrying forever.
+
+## Locked out of the admin account
+
+```
+localdrive reset-admin
+```
+
+This writes a marker file into the data directory and restarts the server,
+which consumes it on startup, resets the password, and writes an audit entry.
+Nothing reaches into the SQLite file directly, which would risk corrupting it;
+the server remains the only thing that ever writes to its own database.
+
+## Thumbnails are missing for videos or PDFs
+
+The server looks for `ffmpeg` and `pdftoppm` once at startup and logs what it
+found. If either is absent, those files keep their type badge. That is expected
+behaviour, not a failure.
+
+Two places are searched, in this order:
+
+1. Anywhere on `PATH`.
+2. The directory holding the Local Drive binary itself.
+
+The second exists because a self hosted server is often a binary dropped in a
+folder rather than something a package manager installed. Putting `ffmpeg.exe`
+next to `localdrive.exe` is easier than editing the system `PATH` on Windows,
+and it travels with the install if the folder is moved.
+
+On Windows and Linux the server also fetches `ffmpeg` by itself when it is
+missing, in the background, and enables video previews the moment it lands. Set
+`LOCALDRIVE_FETCH_FFMPEG=false` to stop that. See
+[Requirements](/self-hosting/requirements).
+
+Restart the server after adding either tool by hand. The startup log says which one it
+is about to use:
+
+```json
+{"time":"...","level":"INFO","msg":"video thumbnails enabled","ffmpeg":"C:\LocalDrive\ffmpeg.exe"}
+```
+
+Thumbnails are generated when a file is uploaded, so files that were already
+there when `ffmpeg` was missing keep their type badge. Upload one again to get a
+preview for it.
+
+## A video plays but takes a long time to start
+
+Local Drive serves files with byte ranges, so a player should ask for the part
+it needs and begin on the first keyframe. A player that does not support ranges
+downloads the whole file before showing anything, which looks like a long load
+on a large video even over a fast network.
+
+The desktop and mobile apps use libmpv and request ranges. In the server log a
+streaming player shows `206`, and one that downloaded everything first shows
+`200` with the full byte count.

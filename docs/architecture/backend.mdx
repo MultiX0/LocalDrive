@@ -1,0 +1,106 @@
+---
+title: Backend
+description: Go, SQLite, and the content addressed store.
+sidebar_position: 2
+---
+
+# Backend
+
+## Choices, and why
+
+| Concern | Choice | Why |
+| --- | --- | --- |
+| Router | `chi` | Thin over `net/http`, no surprises with streaming bodies |
+| Metadata | SQLite via `modernc.org/sqlite` | Pure Go, no cgo, near zero idle memory, no second process |
+| Files | Content addressed filesystem | Crash safe, deduplicating, metadata only moves |
+| WebSocket | `nhooyr.io/websocket` | Small, context aware, no C dependency |
+| Uploads | tus, via `tusd`'s handler as a library | Spec compliant resumability for free |
+| Passwords | Argon2id | Current practice, memory cost tunable to the budget |
+| Jobs | In process worker pool | No queue service needed at this scale |
+
+## The SQLite concurrency model
+
+One dedicated writer goroutine consumes write operations from a buffered
+channel and applies each inside a transaction. This is the standard way to
+avoid `SQLITE_BUSY` under WAL without an external lock service.
+
+Reads use a separate `sql.DB` pool, opened `query_only`, tuned to the CPU
+count. WAL means readers are never blocked by the writer.
+
+## The content addressed store
+
+Every file is written once to `objects/<aa>/<bb>/<sha256>` under its library
+root. This is the primary engine, not an opt in mode, because it gives three
+things that matter more the smaller and slower the host is:
+
+- **Crash safe writes.** Bytes go to a temp path, get fsynced, and are only
+  then renamed into place. A crash leaves an orphaned temp file, never a half
+  written file where a reader could find it.
+- **Cheap structural operations.** A rename, a move, or a version restore is a
+  metadata update. No bytes move. On a spinning external drive this matters a
+  great deal.
+- **Free deduplication.** The same file uploaded twice, or by two people, costs
+  one row rather than a second copy.
+
+The trade off is that the raw drive stops being meaningful to browse with a
+file manager. That is solved directly rather than accepted: a background job
+maintains a read only mirror of symlinks at `browse/<user>/<path>` pointing at
+the real objects. It is a convenience view, documented as such, so it never has
+to be perfectly real time.
+
+Two hidden directories sit beside `objects/` per library:
+
+- `.localdrive/versions/` for prior versions, themselves content addressed.
+- `.localdrive/thumbnails/<node-id>.jpg` for generated previews.
+
+## Deleting safely
+
+Because content is deduplicated, an object is only removed once nothing else
+references it: no live node with that checksum in the same library, and no
+version row either. That reference check makes deletion safe, and it
+distinguishes two cases carefully. A node replacing its own bytes keeps its
+version rows pointing at the old object; a node being deleted outright takes
+its whole history with it.
+
+## Background jobs
+
+A fixed size worker pool, two workers by default, plus a scheduler for the
+periodic passes: share expiry sweep, trash purge, version pruning, quota
+recalculation, abandoned upload sweep, session cleanup, library probing, and a
+storage integrity check that confirms every referenced object is on disk with a
+matching checksum.
+
+The share expiry sweep is hygiene and audit trail only. The real check is the
+live `expires_at` comparison made in the same request that would serve the
+file, so a slow sweep never creates a window where an expired link works.
+
+## Reading what a picture says about itself
+
+Alongside the thumbnail, the same job reads two things out of an image's own
+header: its pixel dimensions, and when it was taken.
+
+Dimensions are what let a client lay out a photo grid before a single
+thumbnail has arrived. Without them the grid reflows as images load, which is
+the most obvious way a photo screen looks cheap.
+
+Capture time is a genuinely different field from upload time. A photo taken in
+2019 and uploaded today has a `created_at` of today, and a gallery sorted by
+that puts it at the top. `taken_at` stays NULL when a file carries no capture
+time, rather than being defaulted, so a client can choose its own fallback
+instead of being handed an invented value.
+
+Both are recorded whether or not a thumbnail was produced. A picture too odd
+to render a preview for still has dimensions and a date worth knowing.
+
+Only the header is decoded, never the pixels, so this costs the same on a forty
+megapixel raw as on a thumbnail. The EXIF reader is written here rather than
+pulled in, in `internal/media`, and is deliberately narrow: it walks the APP1
+segment of a JPEG for three tags and refuses anything that claims an
+implausible size. It runs on whatever anyone uploads, so the failure mode that
+matters is not a wrong answer but a panic or an allocation that does not
+return.
+
+Orientation is applied to the dimensions. A photo whose stored pixels are a
+quarter turn from how it is meant to be seen would otherwise be laid out in a
+landscape slot.
+

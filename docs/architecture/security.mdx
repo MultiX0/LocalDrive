@@ -1,0 +1,144 @@
+---
+title: Security
+description: The permission matrix, the privilege boundaries, and what is enforced where.
+sidebar_position: 4
+---
+
+# Security
+
+## Permissions
+
+Something shared with a family member is theirs to look at and download, never
+theirs to delete, rename, move, or reshare, unless the owner hands over more.
+This is a real server side check on every mutating request, not a hidden
+button.
+
+### Resolving a role
+
+For any node and any request the server resolves exactly one of three outcomes:
+the caller owns it, the caller has an explicit permission row on it or an
+ancestor, or the caller has no access at all.
+
+No access returns **404, not 403**, so a stranger cannot even confirm a node
+exists.
+
+Sharing a folder is not a per file operation. One row on the folder covers
+everything inside it, and resolving a deeply nested file walks up its parent
+chain to the first match.
+
+### The capability matrix
+
+| Action | Viewer | Editor | Owner |
+| --- | --- | --- | --- |
+| Browse, preview, download | yes | yes | yes |
+| Star, which is your own bookmark | yes | yes | yes |
+| Create inside | no | yes | yes |
+| Rename | no | yes | yes |
+| Upload a new version | no | yes | yes |
+| Move | no | no | yes |
+| Recolor a folder | no | no | yes |
+| Trash, restore, permanently delete | no | no | yes |
+| Change sharing or permissions | no | no | yes |
+
+Deletion and sharing are owner only on purpose, stricter than a typical Drive
+editor role. An editor can work with the content, never restructure it or give
+it away.
+
+Trashing hides a node from everyone it was shared with, not only the owner.
+
+### Admin is not a master key
+
+`admin` manages users, storage, server settings, and device approvals. Admin
+does **not** mean "can read everyone's files". A household member's private
+folder stays private from whoever set the server up unless they share it.
+There is no admin bypass in the ownership query. The only content adjacent
+thing an admin sees is the activity log: what happened, when, by whom, never
+file contents.
+
+## Accounts
+
+- **First run** is the one endpoint that creates a user with no auth and no
+  invite, and it refuses outright once any user exists.
+- **After that**, an admin creates an invite: a label, an expiry, and a code
+  that doubles as a QR and a link. The invitee picks their own username and
+  password on their own device; the admin never handles either.
+- **Self registration** exists for a LAN only household server and is off by
+  default, because leaving it on means anyone who finds the address can make an
+  account.
+- **A temporary password** blocks every write until it is changed, so a default
+  credential lives minutes rather than indefinitely.
+
+## Device approval
+
+When enabled, a device signing in for the first time on an account that already
+has an approved device gets a narrow, scope restricted token that can only poll
+its own approval status. Every other endpoint refuses it.
+
+Approving is self service: a device already on the account lets the new one in.
+An admin can also step in for anyone who is stuck, as a fallback rather than
+the normal path.
+
+Off by default for a single user deployment, on the moment a second account
+exists.
+
+**Approval alone is not a recovery story.** If the only approved device is
+lost, stolen or wiped, the account cannot let a new one in, and the only way
+back is an admin stepping in or `localdrive reset-admin` on the machine
+itself. That is why two factor exists alongside it rather than instead of it.
+
+## Two factor
+
+Standard TOTP, so any authenticator works: Google Authenticator, Aegis, 1Password,
+whatever someone already uses. Nothing here is specific to one app.
+
+Enrolment shows the QR first, because that is the path almost everyone takes.
+The secret is underneath in text for anyone typing it into a password manager
+or setting up a device that cannot see the screen. Nothing is enabled until a
+real code is accepted, so an account cannot end up half enrolled and locked out
+of itself.
+
+**Recovery codes are issued at enrolment**, each usable once. They are the
+answer to a lost phone, and the reason two factor is a better protection than
+device approval rather than a second hurdle on top of it. They are shown once
+and stored hashed.
+
+### Required for admins, optional for everyone else
+
+An admin can change quotas, reset passwords, change roles and remove accounts.
+That account is worth more than any single member's, so it does not get to run
+on a password alone: an admin signing in without two factor set up is held on
+the enrolment screen until it is done.
+
+A member decides for themselves, from **Settings**. Forcing it on everybody in
+a household would mostly generate lockouts, and the threat model for a member's
+account does not warrant it.
+
+The server decides both. `must_enable_totp` is computed from the role and the
+enrolment state on every response, so the requirement cannot be dodged by a
+client that chooses not to ask.
+
+## Transport and storage
+
+- Plain HTTP by default, because no certificate authority issues for a LAN
+  address and a self signed certificate is refused outright by the app. With a
+  domain set, Caddy terminates TLS once in front and the Go process listens on
+  plain HTTP behind it. See [HTTP and HTTPS](/self-hosting/https).
+- Argon2id password hashing, cost documented in `.env.example`.
+- Short lived JWT access tokens plus rotating, single use refresh tokens,
+  hashed at rest, one row per device, individually revocable.
+- Optional TOTP with single use recovery codes.
+- Every resolved filesystem path is canonicalized and checked to stay inside
+  its own library root, at the API layer and again at the filesystem layer.
+  Symlinks are not followed across a library boundary.
+- Token bucket rate limiting per IP on auth and per user on the general API.
+- CORS restricted to configured origins, never a wildcard.
+- Share links carry 128 bit tokens, an optional hashed password, an optional
+  expiry checked on **every** access, and can be revoked or edited without
+  changing the URL.
+
+## Audit
+
+Every security relevant action is written to `activity_log`: sign in, failed
+sign in, share created or revoked, permission changed, file permanently
+deleted, drive mounted, formatted, or ejected, and role changes. Drive
+operations are recorded **before** the helper is asked to act.

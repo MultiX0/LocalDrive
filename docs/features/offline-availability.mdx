@@ -1,0 +1,91 @@
+---
+title: Offline availability
+description: Keeping files on a device so they open with no connection at all.
+sidebar_position: 4
+---
+
+# Offline availability
+
+Mark a file or folder available offline and it opens from that device with no
+connection at all.
+
+This is a different thing from the metadata cache. The cache remembers what a
+folder looked like so it reloads instantly and stays browsable offline; it says
+nothing about whether the bytes of any file are actually on the device. Offline
+availability is the promise that they are.
+
+## Marking something
+
+Open the menu on any file or folder and choose **Keep on this device**. A badge
+appears in the tile's top-right corner once the bytes have landed.
+
+The decision is device-local and never leaves the device. The same file can be
+kept on a phone and not on its owner's tablet, so there is no server-side flag
+and nothing to sync between devices.
+
+Marking a folder cascades to its current contents, and stays a live preference
+rather than a one-time snapshot: anything added to that folder later is pulled
+down too, the next time the device is online, until you turn it back off.
+
+Unmarking a folder removes what came down with it, and leaves alone anything
+you had marked individually.
+
+## Keeping it current
+
+On reconnect the app compares each marked item's local checksum against the
+server's `checksum_sha256` and re-downloads only what actually changed. It is
+never a blind re-fetch of everything marked.
+
+The download itself goes through the same durable, resumable queue as every
+other transfer. Offline sync is not a second download path that has to be kept
+in step with the first one.
+
+An item that has disappeared from the server, or that this account can no
+longer see, has its local copy removed rather than left behind as a private
+fork of something that no longer exists.
+
+## Space on the device
+
+**Settings, Downloads on this device** shows what offline content is costing:
+the total, a breakdown by the folder each file came from, and a button to clear
+it all.
+
+This is deliberately separate from the server storage screen. That number is
+about the server's disks; this one is about the phone or laptop in front of
+you, and someone looking at a nearly full device needs the second one.
+
+There is a warning threshold, 2 GB by default. Going past it warns rather than
+refuses: telling you what something will cost is more useful than declining to
+keep a file you asked for. Set it to **No limit** to turn the warning off.
+
+## Browsing while genuinely offline
+
+The folder tree renders from the metadata cache exactly as it does online.
+
+Anything marked offline opens normally, from local bytes, with no spinner and
+no wait. Anything not marked still appears in the list, because you should be
+able to see what exists, with a plain "needs a connection" message instead of
+the usual preview and a button to keep it for next time. That state clears on
+its own the moment connectivity returns.
+
+## Where the bytes are
+
+In the app's own support directory, under `offline/`, one flat folder keyed by
+node id.
+
+Not a mirror of the server's folder names, deliberately. Two files in different
+folders can share a name, names change when someone renames a file, and a name
+can contain characters the local filesystem will not take. The id has none of
+those problems, and the device database already knows which id is which file.
+
+## Not available on web
+
+A browser tab has no filesystem to keep bytes in, so the option is not offered
+there rather than offered and then failing. Everything else on this page
+applies to Android, iOS, Windows, macOS, and Linux.
+
+## Signing out
+
+Signing out clears every offline copy, the metadata cache, and the transfer
+queue. The next person to use that device has no business seeing the previous
+one's folder names, let alone their files.

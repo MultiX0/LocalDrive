@@ -1,0 +1,89 @@
+---
+title: Nearby sharing
+description: Why sharing with someone in the same room feels instant, and what is actually happening underneath.
+sidebar_position: 5
+---
+
+# Nearby sharing
+
+Sharing with someone on the same Wi-Fi is one tap, with a live indicator next
+to their name and the item's icon arcing toward their avatar.
+
+## What does not change
+
+The share is still `POST /nodes/:id/permissions` against your server. It still
+appears for the other person on every device they own, and it is still governed
+by the same permission matrix as every other kind of access.
+
+Local Drive does not do a peer-to-peer file beam that bypasses the server, on
+purpose. A direct device-to-device transfer hands the receiving person a
+one-off copy, not an ongoing shared item they can still open next week from a
+different device, which is the entire point of sharing through a Drive-style
+app rather than over Bluetooth.
+
+## What does change
+
+Discovery and presentation.
+
+While a sharing screen is open, the app advertises a small presence beacon over
+mDNS: this person, this account, on this network, right now. Other Local Drive
+apps on the same network see it directly, with no server round trip needed just
+to know who is around.
+
+In the people picker, anyone currently nearby is marked with a live indicator
+and sorted above everyone else. Tapping them plays the send animation while the
+permission grant fires underneath, so the animation never delays the actual
+sharing.
+
+The receiving device gets a `share.received` event over its own WebSocket
+connection and shows a specific notice, who shared what, rather than a generic
+one.
+
+## The beacon
+
+Service type `_ldpeer._tcp`, deliberately not the server's own
+`_localdrive._tcp`. This is a person on a device, not a node.
+
+The TXT record carries a display name, an account id, and an avatar seed, and
+nothing else. The SRV port is a placeholder: nothing listens on it, because the
+share goes through the server and there is no socket for anyone to connect to.
+
+It advertises only while a sharing screen is actually open, never in the
+background. That is both for battery and because announcing your presence at
+all times is not something an app should do without asking.
+
+## What each platform can do
+
+| Platform | Sees others | Is seen by others |
+| --- | --- | --- |
+| Android | yes | yes, through `NsdManager` |
+| iOS, macOS | yes | yes, through Bonjour |
+| Windows, Linux | yes | no |
+
+Windows and Linux have no system service-discovery API to publish through, so
+on those two the picker sees other people but other people do not see it. Half
+of a feature that works is better than none, and saying so is better than
+implying otherwise.
+
+**Web always uses the plain picker.** A browser sandbox grants no raw
+multicast. That is correct behaviour rather than a gap, the same way AirDrop
+has no browser equivalent.
+
+## The iOS permission
+
+iOS shows a system prompt the first time anything touches multicast. A cold
+prompt with no explanation is how apps end up permanently denied, so the app
+explains what it is for first, in a sheet, and only then lets the system ask.
+
+A no is a real answer. It is not asked again, and the picker keeps working as
+the plain list it always was.
+
+## When nobody is nearby
+
+The picker shows the plain list, with no live indicators, still fully
+functional and still one tap.
+
+If the server is reachable from outside the LAN, sharing works identically for
+two people who are nowhere near each other. The server is the middleman either
+way; being on the same Wi-Fi just makes that middleman fast enough to feel
+instant and worth animating.

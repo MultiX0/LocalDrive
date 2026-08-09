@@ -1,0 +1,276 @@
+---
+title: CLI reference
+description: Every command, what it prints, and when to reach for it.
+sidebar_position: 1
+---
+
+# CLI reference
+
+One binary, several commands. Every output on this page was captured from a
+real run rather than written from memory, so what you see here is what you will
+see.
+
+```
+localdrive help
+```
+
+```
+  Local Drive
+  Your own file server, on your own hardware.
+
+  Usage: localdrive <command>
+
+    setup          set up and start a server on this machine
+    init           write a working configuration without asking anything
+    serve          run the server in the foreground, with no Docker
+    start          start an already configured server
+    stop           stop a running server
+    restart        restart a running server
+    status         show whether the server is up, and where to reach it
+    logs           follow the server log
+    reset-admin    reset the admin password on an existing install
+    backup         write a backup of the database and the library
+    update         check for a newer release and install it
+    rollback       go back to the previous version
+    version        print the version
+
+  Run it with no command at all to set a server up.
+```
+
+## Flags every command takes
+
+| Flag | What it does |
+| --- | --- |
+| `--dir <path>`, `-d <path>` | Use this install instead of the default one. |
+
+`--dir` matters when you keep more than one server on a machine. Without it,
+the install is `LOCALDRIVE_HOME` if set, otherwise the platform default listed
+in [Where your data lives](/self-hosting/where-your-data-lives).
+
+## Setting up
+
+### `setup`
+
+Interactive. Asks about five things, writes the configuration, starts the
+server, and creates the first admin account. This is what running `localdrive`
+with no command does.
+
+Use it the first time, on a machine you are sitting at.
+
+### `init`
+
+The same configuration, written without asking anything. Every answer takes its
+default.
+
+```
+localdrive init
+```
+
+```
+  Local Drive
+  Your own file server, on your own hardware.
+  ------------------------------------------
+
+
+  Preparing C:\LocalDrive
+    Generated 3 secrets, unique to this machine
+    Wrote C:\LocalDrive\.env
+    Wrote C:\LocalDrive\Caddyfile
+    Wrote C:\LocalDrive\docker-compose.yml
+
+  Ready. Start it with either of these:
+
+      localdrive start
+      docker compose up -d
+
+  Then open http://<this machine>:7443
+```
+
+The three secrets are generated per install and written beside the database.
+Nothing ships with a default credential.
+
+`init` does not create an admin account. The first person to open the server in
+a browser does that.
+
+Use `init` in a script, a Dockerfile, or anywhere nobody is present to answer a
+prompt. It will not overwrite files that already exist.
+
+## Running
+
+### `serve`
+
+Runs in the foreground with no Docker and no proxy. Logs go to standard output
+as JSON.
+
+```
+localdrive serve
+```
+
+```
+{"time":"...","level":"INFO","msg":"starting local drive","version":"0.0.1","config":{"addr":":7443","db_path":"...\\data\\db\\localdrive.sqlite","library_path":"...\\data\\library",...}}
+{"time":"...","level":"INFO","msg":"migration applied","name":"0001_init.sql"}
+{"time":"...","level":"INFO","msg":"migration applied","name":"0002_media_metadata.sql"}
+{"time":"...","level":"INFO","msg":"using data directory","database":"...\data\db\localdrive.sqlite","library":"...\data\library"}
+{"time":"...","level":"WARN","msg":"ffmpeg not found, so videos will have no preview. Install ffmpeg and put it on PATH, or drop ffmpeg.exe beside the Local Drive binary, then restart"}
+{"time":"...","level":"INFO","msg":"pdftoppm not found, so pdf files will show a type badge instead of a preview"}
+{"time":"...","level":"INFO","msg":"listening","addr":":7443"}
+```
+
+The first line prints the configuration it resolved, which is the fastest way
+to find out where it decided to put things.
+
+The "using data directory" line answers the question everyone asks first, which
+is where the files actually live.
+
+The two "not found" lines are informational. `ffmpeg` and `pdftoppm` are
+optional; without them those file types get a type badge instead of a
+thumbnail, and nothing else changes. Both are looked for on `PATH` and then in
+the directory holding the binary, so dropping `ffmpeg.exe` next to
+`localdrive.exe` is enough. See
+[Thumbnails are missing](/self-hosting/troubleshooting).
+
+`serve` stops when the terminal closes. To keep it alive, see
+[Keeping it running](/self-hosting/running-always).
+
+### `start`, `stop`, `restart`
+
+For an install running under Docker Compose. `start` brings the containers up,
+`stop` takes them down, `restart` does both.
+
+### `logs`
+
+Follows the log. Under Docker this is `docker compose logs -f`; the command
+exists so you do not have to remember which.
+
+## Checking on it
+
+### `status`
+
+Where the install is, which port, how it is running, and whether anything is
+answering.
+
+```
+localdrive status
+```
+
+```
+  Install     C:\LocalDrive
+  Data        C:/LocalDrive/data
+  Port        7443
+  Mode        directly on this machine
+
+  Running
+
+  Open one of these:
+    http://192.168.1.10:7443
+    http://10.0.0.20:7443
+    http://my-server.local:7443
+
+  Plain http. Set LD_DOMAIN in .env to a domain pointing here
+  and Caddy gets a real certificate on its own.
+```
+
+When nothing is up:
+
+```
+  Not answering (nothing on port 7443)
+  Try: localdrive start
+```
+
+**Running or not is decided by asking the port, not by identifying the
+process.** If a different Local Drive install is using the same port, this
+will report Running for the one you asked about. That only comes up when you
+keep two installs on one machine, and `--dir` with different `LD_PORT` values
+avoids it.
+
+`Mode` is read from Docker rather than guessed from the presence of a
+`docker-compose.yml`, which `init` writes whether or not you use it.
+
+### `version`
+
+```
+localdrive version
+```
+
+```
+localdrive 0.0.1 (windows/amd64, go1.25.8)
+```
+
+The version is stamped at build time. A binary built from source with plain
+`go build` reports `dev`, and `update` treats that as older than any release.
+
+## Looking after it
+
+### `backup`
+
+Copies the database and the library somewhere safe, with the server still
+running.
+
+```
+localdrive backup
+```
+
+```
+    database
+    library
+
+  Backup written to C:\LocalDrive\20260807-233905
+
+  To restore: stop the server, put db/ and library/ back where they
+  came from under C:/LocalDrive/data, then start it again.
+```
+
+The database copy is taken through SQLite's own backup, so it is consistent
+even mid-write. A plain file copy of a live database is not, which is the
+reason this command exists at all. See [Backups](/self-hosting/backups).
+
+### `reset-admin`
+
+Sets a new admin password on an existing install, for the case where the only
+admin account is locked out. Needs access to the machine, which is the point:
+anyone who can run this already owns the server.
+
+### `update`
+
+Checks GitHub for a newer stable release and installs it.
+
+```
+localdrive update --check
+```
+
+Looks and reports, changing nothing.
+
+```
+localdrive update
+```
+
+Backs up, downloads, verifies the download against the published `SHA256SUMS`,
+swaps the binary, restarts, and confirms the new version answers. If it does
+not, it rolls back on its own.
+
+| Flag | What it does |
+| --- | --- |
+| `--check` | Report whether an update exists, install nothing. |
+| `--no-backup` | Skip the backup step. |
+
+Prereleases are ignored. Under Docker the command explains that the image is
+the unit of update and prints the two `docker compose` lines instead, because
+replacing the file on disk would change nothing while appearing to work.
+
+The database and the library are never touched. Only the executable is
+replaced, and the previous one is kept beside it as `.old`.
+
+### `rollback`
+
+Puts the previous binary back, with no download, for a release that installs
+and starts but misbehaves.
+
+```
+localdrive rollback
+```
+
+## Exit codes
+
+`0` on success, `1` on failure. Every failure prints a sentence saying what
+went wrong before it exits, so a script can check the code and a person can
+read the line.

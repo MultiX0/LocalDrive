@@ -1,0 +1,260 @@
+/*
+  Documentation body styles.
+
+  Written by hand rather than with a typography plugin. A plugin ships its own
+  sizes, colours, spacing rhythm and link treatment, most of which would be
+  overridden here, and it puts a second source of truth for type next to the
+  one in tokens.css. For a fixed vocabulary of elements across 25 documents,
+  this is both less work and exact.
+
+  Every size below comes from the app's own type scale.
+*/
+
+.prose {
+  color: var(--color-fg);
+  font-size: 15px;
+  line-height: 24px;
+  max-width: 46rem;
+}
+
+.prose > * + * {
+  margin-top: 1.1em;
+}
+
+/* headings */
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 6rem;
+}
+
+.prose h2 {
+  margin-top: 2.6em;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--color-stroke);
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.prose h3 {
+  margin-top: 2em;
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.prose h4 {
+  margin-top: 1.8em;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--color-fg-secondary);
+}
+
+/* the anchor stays out of the way until the heading is hovered or focused,
+   so it is available without decorating every heading permanently */
+.prose .heading-anchor {
+  margin-left: 0.4em;
+  color: var(--color-fg-muted);
+  opacity: 0;
+  text-decoration: none;
+  transition: opacity var(--duration-tap) var(--ease-brand);
+}
+
+.prose .heading-anchor::after {
+  content: "#";
+}
+
+.prose h2:hover .heading-anchor,
+.prose h3:hover .heading-anchor,
+.prose .heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+/* text */
+
+.prose p {
+  color: var(--color-fg-secondary);
+}
+
+.prose strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.prose a:hover {
+  text-decoration-color: var(--color-accent);
+}
+
+/* lists */
+
+.prose ul,
+.prose ol {
+  padding-left: 1.3em;
+  color: var(--color-fg-secondary);
+}
+
+.prose ul {
+  list-style: none;
+  padding-left: 1.1em;
+}
+
+/* a drawn marker rather than a glyph, so it matches the app's bullet */
+.prose ul > li {
+  position: relative;
+  padding-left: 0.3em;
+}
+
+.prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: -0.9em;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+}
+
+.prose ol {
+  list-style: decimal;
+}
+
+.prose li + li {
+  margin-top: 0.45em;
+}
+
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.45em;
+}
+
+/* code */
+
+.prose :not(pre) > code {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo,
+    Consolas, monospace;
+  font-size: 0.88em;
+  color: var(--color-file-code);
+  background: var(--color-sunken);
+  border: 1px solid var(--color-stroke);
+  border-radius: 6px;
+  padding: 0.1em 0.36em;
+  word-break: break-word;
+}
+
+.prose pre {
+  background: var(--color-sunken);
+  border: 1px solid var(--color-stroke);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.prose pre code {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo,
+    Consolas, monospace;
+  /* code never wraps: a wrapped line is a lie about where the line breaks are */
+  white-space: pre;
+}
+
+/*
+  Tables.
+
+  Used heavily, and the API reference has three column tables with long paths
+  that overflow a phone. The usual affordance for that is a gradient fade on
+  the trailing edge, which this design system does not permit, so the wrapper
+  carries a real border and its own scrollbar and the page itself never
+  scrolls sideways.
+*/
+
+.prose .table-scroller {
+  overflow-x: auto;
+  border: 1px solid var(--color-stroke);
+  border-radius: var(--radius-field);
+  /* keyboard scrollable, so the content is reachable without a pointer */
+  scrollbar-color: var(--color-stroke) var(--color-sunken);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 20px;
+}
+
+.prose thead {
+  background: var(--color-elevated);
+}
+
+.prose th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+
+.prose th,
+.prose td {
+  padding: 0.7rem 0.95rem;
+  border-bottom: 1px solid var(--color-stroke);
+  color: var(--color-fg-secondary);
+  vertical-align: top;
+}
+
+.prose tbody tr:last-child th,
+.prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* the first column is usually the key being described, so it reads as a label */
+.prose tbody td:first-child {
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+
+.prose td code {
+  white-space: nowrap;
+}
+
+/* the rest */
+
+.prose blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding: 0.15rem 0 0.15rem 1rem;
+  color: var(--color-fg-secondary);
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--color-stroke);
+  margin-top: 2.4em;
+  margin-bottom: 2.4em;
+}
+
+.prose img {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-stroke);
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  .prose {
+    font-size: 15px;
+  }
+
+  .prose h2 {
+    font-size: 19px;
+  }
+}

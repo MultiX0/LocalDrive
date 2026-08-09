@@ -1,0 +1,38 @@
+# The Dockerfile does COPY . ., so anything not excluded here ends up in an
+# image layer. That matters most for the two below: building on a machine with
+# a live install would bake the database and the generated secrets into the
+# image, and layers are readable by anyone who pulls it.
+data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+secrets.env
+*.pem
+*.key
+
+# Generated per install, not part of the build
+Caddyfile
+docker-compose.yml
+
+# Build output, which would only be rebuilt inside the image anyway
+localdrive
+localdrive.exe
+server
+server.exe
+server-arm64
+# web/ holds the placeholder page and, once built, the flutter web client.
+# the built output is ignored; the placeholder and readme are committed.
+web/*
+!web/README.md
+!web/index.html
+backups/
+*.tar.gz
+
+# Repository noise
+.git/
+.github/
+.gitignore
+.dockerignore
