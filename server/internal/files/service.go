@@ -35,6 +35,10 @@ type Service struct {
 	// thumbnailer is set by the app wiring; nil means previews are skipped
 	thumbnailer func(ctx context.Context, node models.Node, root string) error
 
+	// thumbnailSupported answers whether a type can be rendered at this
+	// moment, which is not fixed: video support appears when ffmpeg does
+	thumbnailSupported func(mime string) bool
+
 	// mediaProbe reads an image's dimensions and capture time. Wired in the
 	// same way and for the same reason: this package does not import the one
 	// that knows how to read a JPEG

@@ -958,6 +958,65 @@ func (s *Service) scheduleThumbnail(node models.Node) {
 	}})
 }
 
+// BackfillThumbnails queues previews for files that never got one.
+//
+// Video previews need ffmpeg, and ffmpeg may arrive minutes after the server
+// did, by download. Anything uploaded in that window was skipped once and, up
+// to now, was never looked at again: the file kept a type badge for the rest of
+// its life while every video uploaded afterwards got a picture. That reads as
+// the feature being broken, because from the outside it is.
+//
+// Bounded on purpose. A library with ten thousand videos should not turn a
+// restart into an hour of full tilt transcoding, so this takes a batch and the
+// caller comes back for more.
+func (s *Service) BackfillThumbnails(ctx context.Context, limit int) (int, error) {
+	if s.thumbnailer == nil {
+		return 0, nil
+	}
+	if limit <= 0 {
+		limit = 25
+	}
+
+	rows, err := s.database.Read().QueryContext(ctx, `
+		SELECT id, library_id, owner_id, name, mime_type, size_bytes, checksum_sha256
+		  FROM nodes
+		 WHERE type = 'file'
+		   AND has_thumbnail = 0
+		   AND trashed_at = 0
+		   AND deleted_at = 0
+		   AND checksum_sha256 <> ''
+		 ORDER BY created_at DESC
+		 LIMIT ?`, limit)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var queued int
+	for rows.Next() {
+		var node models.Node
+		if err := rows.Scan(&node.ID, &node.LibraryID, &node.OwnerID, &node.Name,
+			&node.MimeType, &node.SizeBytes, &node.ChecksumSHA256); err != nil {
+			return queued, err
+		}
+		node.Type = models.NodeFile
+		// asking about a file nothing can render would queue a job that fails
+		// on every pass, forever
+		if s.thumbnailSupported != nil && !s.thumbnailSupported(node.MimeType) {
+			continue
+		}
+		s.scheduleThumbnail(node)
+		queued++
+	}
+	return queued, rows.Err()
+}
+
+// SetThumbnailSupport lets the wiring say which types can be rendered right
+// now, which changes when ffmpeg appears.
+func (s *Service) SetThumbnailSupport(fn func(mime string) bool) {
+	s.thumbnailSupported = fn
+}
+
 func (s *Service) scheduleVerify(node models.Node) {
 	s.pool.Submit(jobs.Job{Kind: jobs.KindVerify, Name: node.ID, Run: func(ctx context.Context) error {
 		root, err := s.libs.Root(node.LibraryID)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +16,67 @@ import (
 	"strings"
 	"time"
 )
+
+// fetchAttempts and the backoff between them.
+//
+// One try was not enough. A server that comes up while the network is still
+// settling, or while the upstream host is having a bad minute, would give up
+// for the lifetime of the process and every video uploaded afterwards would
+// have no preview until somebody restarted it.
+//
+// The gaps grow, and each is scattered by up to a third of itself, so a
+// hundred servers that all started when the power came back do not knock on
+// the same door at the same second.
+var fetchBackoff = []time.Duration{
+	15 * time.Second,
+	1 * time.Minute,
+	5 * time.Minute,
+	20 * time.Minute,
+	1 * time.Hour,
+	3 * time.Hour,
+}
+
+// jitter spreads retries out. Deterministic sources are not needed here, and
+// crypto/rand would be a strange dependency for choosing a delay.
+func jitter(d time.Duration) time.Duration {
+	spread := int64(d / 3)
+	if spread <= 0 {
+		return d
+	}
+	return d + time.Duration(rand.Int63n(spread))
+}
+
+// FetchWithRetry keeps trying until it has an ffmpeg that runs, then stops.
+//
+// It returns "" only when it has given up or been cancelled, so a caller can
+// treat a non-empty result as a tool it has already executed successfully.
+func FetchWithRetry(ctx context.Context, log *slog.Logger, dir string) string {
+	if log == nil {
+		log = slog.Default()
+	}
+	for attempt := 0; ; attempt++ {
+		if path := FetchFFmpeg(ctx, log, dir); path != "" {
+			return path
+		}
+		if ctx.Err() != nil {
+			return ""
+		}
+		if attempt >= len(fetchBackoff)-1 {
+			log.Warn("giving up on fetching ffmpeg after repeated failures. "+
+				"install it from your package manager for video previews",
+				"attempts", attempt+1)
+			return ""
+		}
+		wait := jitter(fetchBackoff[attempt])
+		log.Info("could not fetch ffmpeg, trying again later",
+			"attempt", attempt+1, "next_try_in", wait.String())
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return ""
+		}
+	}
+}
 
 // FetchEnv turns the automatic download off.
 //

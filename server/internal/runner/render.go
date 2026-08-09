@@ -24,6 +24,11 @@ type ProxyConfig struct {
 	// public certificate authority sends. Empty means Caddy does not register
 	// one, which is fine.
 	TLSEmail string
+
+	// Proxied is true when Caddy holds the certificate, which is the Docker
+	// install. It changes which addresses answer, and therefore what a share
+	// link has to say. See BaseURL.
+	Proxied bool
 }
 
 // UsesPublicTLS reports whether this install can get a real certificate.
@@ -42,9 +47,19 @@ func (p ProxyConfig) SiteAddress() string {
 }
 
 // BaseURL is the absolute address share links and invite links are built from.
+//
+// A share link is the one address that leaves the machine and gets sent to
+// somebody else, so it should be the shortest one that works.
+//
+// The bare binary serves its certificate on 443 as well as on the configured
+// port, so with a domain the port is noise: https://drive.example.com is the
+// same server as https://drive.example.com:7443 and is what a person expects
+// to be handed. Under Caddy the port stays, because Caddy binds the configured
+// port and nothing else, so dropping it would produce a link that does not
+// resolve.
 func (p ProxyConfig) BaseURL() string {
 	if p.UsesPublicTLS() {
-		if p.Port == 443 {
+		if p.Port == 443 || !p.Proxied {
 			return "https://" + strings.TrimSpace(p.Domain)
 		}
 		return fmt.Sprintf("https://%s:%d", strings.TrimSpace(p.Domain), p.Port)

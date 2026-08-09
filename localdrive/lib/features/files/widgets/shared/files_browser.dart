@@ -24,6 +24,7 @@ class FilesBrowser extends ConsumerWidget {
     this.emptyActionLabel,
     this.onEmptyAction,
     this.emptyGlyph = LdGlyph.folder,
+    this.topInset = 0,
   });
 
   final FolderQuery query;
@@ -32,6 +33,14 @@ class FilesBrowser extends ConsumerWidget {
   final String? emptyActionLabel;
   final VoidCallback? onEmptyAction;
   final LdGlyph emptyGlyph;
+
+  /// Room to leave at the top for something floating over the listing.
+  ///
+  /// The desktop selection bar hovers above the grid so that selecting a file
+  /// never resizes the listing and reflows the tiles. Hovering means it covers
+  /// the first row unless that row is pushed out from under it, and a file you
+  /// cannot see is worse than one that moved.
+  final double topInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,8 +72,18 @@ class FilesBrowser extends ConsumerWidget {
         ),
         data: (nodes) {
           final listing = viewMode == ViewMode.grid
-              ? _Grid(nodes: nodes, selection: selection, query: query)
-              : _List(nodes: nodes, selection: selection, query: query);
+              ? _Grid(
+                  nodes: nodes,
+                  selection: selection,
+                  query: query,
+                  topInset: topInset,
+                )
+              : _List(
+                  nodes: nodes,
+                  selection: selection,
+                  query: query,
+                  topInset: topInset,
+                );
 
           // a rubber band needs a pointer and empty space to start on, so it
           // is a desktop gesture only. A finger dragging on a phone is
@@ -81,6 +100,8 @@ class FilesBrowser extends ConsumerWidget {
               onChanged: (ids, additive) => ref
                   .read(selectionProvider.notifier)
                   .setMarquee(ids, additive: additive, base: before),
+              onEmptyTap: () =>
+                  ref.read(selectionProvider.notifier).clear(),
               child: listing,
             ),
           );
@@ -95,18 +116,20 @@ class _Grid extends ConsumerWidget {
     required this.nodes,
     required this.selection,
     required this.query,
+    this.topInset = 0,
   });
 
   final List<NodeModel> nodes;
   final Set<String> selection;
   final FolderQuery query;
+  final double topInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GridView.builder(
       padding: EdgeInsets.fromLTRB(
         context.pagePadding,
-        8,
+        8 + topInset,
         context.pagePadding,
         120,
       ),
@@ -157,18 +180,20 @@ class _List extends ConsumerWidget {
     required this.nodes,
     required this.selection,
     required this.query,
+    this.topInset = 0,
   });
 
   final List<NodeModel> nodes;
   final Set<String> selection;
   final FolderQuery query;
+  final double topInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(
         context.pagePadding - 8,
-        8,
+        8 + topInset,
         context.pagePadding - 8,
         120,
       ),

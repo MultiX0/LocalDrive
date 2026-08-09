@@ -19,10 +19,17 @@ class MarqueeSelection extends StatefulWidget {
     required this.child,
     required this.onChanged,
     required this.onStart,
+    this.onEmptyTap,
     this.enabled = true,
   });
 
   final Widget child;
+
+  /// A click on empty space that never became a drag.
+  ///
+  /// Every file manager treats this as "never mind", and without it the only
+  /// way out of a selection is finding the small close button on the bar.
+  final VoidCallback? onEmptyTap;
 
   /// the ids the box currently covers, sent on every move so the tiles light
   /// up as the box passes over them rather than only at the end
@@ -85,6 +92,13 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
   Offset? _to;
   bool _additive = false;
 
+  /// Whether this press travelled far enough to be a drag rather than a click.
+  ///
+  /// A mouse moves a pixel or two while the button goes down, so an exact
+  /// comparison would call almost every click a drag.
+  bool _dragged = false;
+  static const double _slop = 4;
+
   Rect? get _rect =>
       _from == null || _to == null ? null : Rect.fromPoints(_from!, _to!);
 
@@ -98,6 +112,7 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
 
   void _start(Offset global) {
     _additive = _modifierHeld;
+    _dragged = false;
     widget.onStart();
     setState(() {
       _from = global;
@@ -106,7 +121,11 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
   }
 
   void _update(Offset global) {
+    if (!_dragged && (global - _from!).distance > _slop) _dragged = true;
     setState(() => _to = global);
+    // nothing is selected or deselected until the press is actually a drag,
+    // so a plain click does not wipe the selection through this path
+    if (!_dragged) return;
     final rect = _rect;
     if (rect != null) widget.onChanged(_registry.hits(rect), _additive);
   }
@@ -155,7 +174,12 @@ class _MarqueeSelectionState extends State<MarqueeSelection> {
           if (_from != null) _update(event.position);
         },
         onPointerUp: (_) {
-          if (_from != null) _end();
+          if (_from == null) return;
+          // a click on nothing means "never mind". Ctrl is excluded because
+          // holding it is how someone adds to a selection, not clears it.
+          final clear = !_dragged && !_additive;
+          _end();
+          if (clear) widget.onEmptyTap?.call();
         },
         onPointerCancel: (_) {
           if (_from != null) _end();

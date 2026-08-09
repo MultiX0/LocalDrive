@@ -134,6 +134,9 @@ func (a *API) Router() http.Handler {
 	// read out loud
 	r.Route("/s", func(r chi.Router) {
 		r.Use(mw.RateLimit(a.apiLimiter, mw.ByIP))
+		// served from this binary rather than a cdn, so opening a share link
+		// tells nobody but this server that it happened
+		r.Get("/assets/htmx.js", a.handleShareAsset)
 		r.Get("/{token}", a.handleShareInfo)
 		r.Post("/{token}", a.handleShareInfo)
 		r.Get("/{token}/download", a.handleShareDownload)

@@ -1,0 +1,50 @@
+{{define "listing.html"}}
+{{- /*
+  The contents of a shared folder, swapped in on its own when somebody opens a
+  subfolder. Being a separate template is the whole reason a click inside a
+  share replaces one box rather than reloading the page.
+*/ -}}
+<div class="trail">
+  {{range $i, $c := .Trail}}
+    {{if $i}}<span class="sep">/</span>{{end}}
+    <button hx-get="/s/{{$.Token}}/children?parent_id={{$c.ID}}{{if $.Password}}&password={{$.Password}}{{end}}"
+            hx-target="#listing" hx-swap="innerHTML">{{$c.Name}}</button>
+  {{end}}
+</div>
+
+<div class="rows">
+{{- if .Children}}
+  {{- range .Children}}
+  <div class="row">
+    {{- if isFolder .Kind}}
+    <button class="open"
+            hx-get="/s/{{$.Token}}/children?parent_id={{.ID}}{{if $.Password}}&password={{$.Password}}{{end}}"
+            hx-target="#listing" hx-swap="innerHTML">
+      <span class="ico">{{template "glyph" icon .}}</span>
+      <span class="txt">
+        <span class="t">{{.Name}}</span>
+        <span class="s">Folder</span>
+      </span>
+    </button>
+    {{- else}}
+    <span class="open" style="cursor:default">
+      <span class="ico">{{template "glyph" icon .}}</span>
+      <span class="txt">
+        <span class="t">{{.Name}}</span>
+        <span class="s">{{bytes .Size}}{{if when .Modified}} · {{when .Modified}}{{end}}</span>
+      </span>
+    </span>
+    {{- if $.AllowDownload}}
+    <a class="dl" title="Download {{.Name}}"
+       href="/s/{{$.Token}}/download?node_id={{.ID}}{{if $.Password}}&password={{$.Password}}{{end}}" download>
+      <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
+    </a>
+    {{- end}}
+    {{- end}}
+  </div>
+  {{- end}}
+{{- else}}
+  <div class="empty">This folder is empty.</div>
+{{- end}}
+</div>
+{{end}}

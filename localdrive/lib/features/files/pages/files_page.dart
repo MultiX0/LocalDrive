@@ -1,6 +1,7 @@
 import '../../../imports.dart';
 import '../models/node_model.dart';
 import '../providers/files_providers.dart';
+import '../widgets/desktop/drop_zone.dart';
 import '../widgets/shared/files_browser.dart';
 import '../widgets/shared/files_toolbar.dart';
 import 'desktop/files_page_desktop.dart';
@@ -54,7 +55,7 @@ class FilesPageBody extends ConsumerWidget {
     final query = FolderQuery(parentId: folderId ?? '', filter: filter.wire);
     final selecting = ref.watch(isSelectingProvider);
 
-    return Column(
+    final body = Column(
       children: <Widget>[
         if (selecting)
           _SelectionBar(query: query)
@@ -86,6 +87,17 @@ class FilesPageBody extends ConsumerWidget {
         ),
       ],
     );
+
+    // Dropping files from the desktop has to keep working when the window is
+    // not maximised.
+    //
+    // Layout follows width, so a window under 1024 wide gets this body instead
+    // of the desktop page, and the drop target used to live only on the
+    // desktop page. Half covering a monitor therefore turned off dragging
+    // files in, on the same machine, with the same mouse. Behaviour follows
+    // the machine, not the window size.
+    if (!desktopBehaviour(context)) return body;
+    return FilesDropZone(folderId: folderId ?? '', child: body);
   }
 }
 

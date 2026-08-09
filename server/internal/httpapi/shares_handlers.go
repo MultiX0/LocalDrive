@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/MultiX0/LocalDrive/server/internal/httpapi/sharepage"
 	"github.com/MultiX0/LocalDrive/server/internal/models"
 	"github.com/MultiX0/LocalDrive/server/internal/shares"
 )
@@ -204,9 +205,22 @@ func sharePassword(r *http.Request) string {
 }
 
 func (a *API) handleShareInfo(w http.ResponseWriter, r *http.Request) {
-	resolved, err := a.shares.ResolvePublic(r.Context(), chi.URLParam(r, "token"), sharePassword(r))
+	token := chi.URLParam(r, "token")
+	password := sharePassword(r)
+	resolved, err := a.shares.ResolvePublic(r.Context(), token, password)
 	if err != nil {
+		// A browser gets a page explaining what happened. The app gets the
+		// error envelope it has always parsed.
+		if sharepage.WantsHTML(r) {
+			a.renderShareError(w, r, token, password, err)
+			return
+		}
 		a.fail(w, r, err)
+		return
+	}
+
+	if sharepage.WantsHTML(r) {
+		a.renderSharePage(w, r, resolved, password)
 		return
 	}
 	ownerName, _ := a.shares.OwnerOf(r.Context(), resolved.Node)
@@ -241,6 +255,14 @@ func (a *API) handleShareChildren(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, err)
 		return
 	}
+
+	// htmx asks for this same url and swaps the folder box in place, so the
+	// answer is the listing on its own rather than a whole page
+	if sharepage.WantsHTML(r) {
+		a.renderShareListing(w, r, resolved, parentID, children, sharePassword(r))
+		return
+	}
+
 	out := make([]nodeDTO, 0, len(children))
 	for _, n := range children {
 		dto := plainNode(n)

@@ -150,6 +150,25 @@ func New(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, error
 		}
 		return store.WriteThumbnail(root, node.ID, data)
 	})
+	filesSvc.SetThumbnailSupport(generator.Supports)
+
+	// The moment ffmpeg finishes downloading, go back for everything that was
+	// uploaded while it was missing. Without this a video uploaded in the first
+	// minute of a server's life keeps a type badge forever, while one uploaded
+	// a minute later gets a picture, which looks like the feature failing at
+	// random rather than a gap that closed.
+	generator.OnFFmpegReady(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		queued, err := filesSvc.BackfillThumbnails(ctx, 100)
+		if err != nil {
+			log.Warn("could not queue the missed video previews", "error", err)
+			return
+		}
+		if queued > 0 {
+			log.Info("queued previews for files uploaded before ffmpeg arrived", "count", queued)
+		}
+	})
 
 	// dimensions and capture time, read from the file's own header. Wired
 	// separately from the thumbnailer because a picture too odd to render a
@@ -258,6 +277,23 @@ func (a *App) registerScheduledJobs(
 		}
 		return nil
 	})
+
+	// A steady, small sweep for previews that are still missing.
+	//
+	// The callback when ffmpeg lands covers the common case. This covers the
+	// rest: a file whose first attempt failed on a busy machine, one uploaded
+	// during a restart, or a library that was offline when its turn came. A
+	// small batch on a long interval means a big library heals over hours
+	// instead of pinning the machine for one of them, and there is no burst
+	// where every server does the same work at the same moment.
+	a.Scheduler.Every("missing preview sweep", 30*time.Minute, 90*time.Second,
+		func(ctx context.Context) error {
+			queued, err := a.Files.BackfillThumbnails(ctx, 50)
+			if err == nil && queued > 0 {
+				log.Info("queued missing previews", "count", queued)
+			}
+			return err
+		})
 
 	a.Scheduler.Every("trash purge", 6*time.Hour, 2*time.Minute, func(ctx context.Context) error {
 		return a.Files.PurgeTrash(ctx, a.Settings.Get().TrashRetentionDays)

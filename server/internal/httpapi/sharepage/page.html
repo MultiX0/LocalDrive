@@ -1,0 +1,275 @@
+{{define "page.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark">
+<title>{{if .Gone}}Link unavailable{{else if .NeedsPassword}}Protected link{{else}}{{.Item.Name}}{{end}} · {{.ServerName}}</title>
+<script src="/s/assets/htmx.js" defer></script>
+<style>
+/*
+  The application's own surfaces, text and accents. Flat fills with a one pixel
+  border and no shadows anywhere, which is a decision in the app rather than an
+  omission here.
+
+  System fonts on purpose. A web font would mean asking a font host for it, and
+  that host would then learn the address of everybody who opens a share link
+  from a server that exists so nobody is in the middle.
+*/
+:root{
+  --bg:#141414; --elevated:#202020; --sunken:#0E0E0E;
+  --fg:#FFFFFF; --fg-2:#909090; --fg-3:#434343; --stroke:#3D3D3D;
+  --accent:#4C8DFF; --warn:#EE7759;
+  --r-card:16px; --r-pill:24px; --r-field:12px; --r-tile:14px;
+  --ease:cubic-bezier(.215,.61,.355,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:"Space Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh; display:flex; flex-direction:column;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.wrap{width:100%;max-width:720px;margin:0 auto;padding:24px 20px 40px;flex:1}
+@media(min-width:700px){.wrap{padding:40px 24px 56px}}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.mark{width:28px;height:28px;flex:none}
+.brand{font-weight:700;letter-spacing:-.01em}
+.brand span{color:var(--fg-2);font-weight:400}
+
+/* ---------- the card ---------- */
+.card{
+  background:var(--elevated); border:1px solid var(--stroke);
+  border-radius:var(--r-card); padding:22px;
+}
+@media(min-width:700px){.card{padding:28px}}
+
+.hero{display:flex;gap:16px;align-items:flex-start}
+.thumb{
+  width:64px;height:64px;flex:none;border-radius:var(--r-tile);
+  background:var(--sunken);border:1px solid var(--stroke);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.6}
+.name{
+  font-size:19px;font-weight:700;letter-spacing:-.01em;margin:2px 0 6px;
+  overflow-wrap:anywhere;
+}
+@media(min-width:700px){.name{font-size:22px}}
+.meta{color:var(--fg-2);font-size:13.5px}
+.meta b{color:var(--fg);font-weight:600}
+
+.facts{
+  margin-top:20px;padding-top:18px;border-top:1px solid var(--stroke);
+  display:grid;gap:12px;
+}
+@media(min-width:560px){.facts{grid-template-columns:repeat(3,1fr)}}
+.fact-k{color:var(--fg-3);font-size:11px;text-transform:uppercase;letter-spacing:.9px;font-weight:600}
+.fact-v{margin-top:3px;font-size:14px;overflow-wrap:anywhere}
+
+/* ---------- buttons ---------- */
+.actions{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:46px;padding:0 22px;border-radius:var(--r-pill);
+  font:inherit;font-weight:600;font-size:14.5px;cursor:pointer;
+  border:1px solid transparent;transition:background .28s var(--ease),border-color .28s var(--ease);
+}
+.btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8}
+.btn-primary{background:var(--accent);color:#0B1220;border-color:var(--accent)}
+.btn-primary:hover{background:#6BA2FF;text-decoration:none}
+.btn-quiet{background:transparent;color:var(--fg);border-color:var(--stroke)}
+.btn-quiet:hover{border-color:var(--fg-2);text-decoration:none}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+.note{
+  margin-top:18px;padding:12px 14px;border-radius:var(--r-field);
+  background:var(--sunken);border:1px solid var(--stroke);
+  color:var(--fg-2);font-size:13.5px;
+}
+.note.warn{border-color:var(--warn);color:var(--fg)}
+
+/* ---------- listing ---------- */
+.trail{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:26px 0 12px;font-size:13.5px;color:var(--fg-2)}
+.trail button{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;padding:0}
+.trail button:hover{text-decoration:underline}
+.trail .sep{color:var(--fg-3)}
+
+.rows{border:1px solid var(--stroke);border-radius:var(--r-card);overflow:hidden;background:var(--elevated)}
+.row{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--stroke);
+}
+.row:last-child{border-bottom:0}
+.row .ico{width:34px;height:34px;flex:none;border-radius:10px;background:var(--sunken);border:1px solid var(--stroke);display:flex;align-items:center;justify-content:center}
+.row .ico svg{width:17px;height:17px;stroke:var(--accent);fill:none;stroke-width:1.7}
+.row .txt{min-width:0;flex:1}
+.row .t{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{color:var(--fg-2);font-size:12.5px}
+.row button.open{background:none;border:0;color:inherit;font:inherit;cursor:pointer;text-align:start;display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:0}
+.row a.dl{color:var(--fg-2);flex:none;display:flex;padding:6px}
+.row a.dl:hover{color:var(--accent)}
+.row a.dl svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7}
+.empty{padding:26px 14px;text-align:center;color:var(--fg-2);font-size:14px}
+
+/* ---------- password ---------- */
+.lock{text-align:center;padding:8px 0 4px}
+.lock .ring{
+  width:56px;height:56px;margin:0 auto 16px;border-radius:50%;
+  border:1px solid var(--stroke);background:var(--sunken);
+  display:flex;align-items:center;justify-content:center;
+}
+.lock .ring svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.6}
+.field{
+  width:100%;height:48px;padding:0 14px;margin-top:6px;
+  background:var(--sunken);border:1px solid var(--stroke);border-radius:var(--r-field);
+  color:var(--fg);font:inherit;outline:none;
+}
+.field:focus{border-color:var(--accent)}
+.err{color:var(--warn);font-size:13.5px;margin-top:10px}
+
+/* ---------- footer ---------- */
+.foot{border-top:1px solid var(--stroke);padding:22px 20px 30px}
+.foot-in{max-width:720px;margin:0 auto;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.foot p{margin:0;color:var(--fg-2);font-size:13px;max-width:44ch}
+.foot b{color:var(--fg)}
+
+.htmx-request{opacity:.55;transition:opacity .28s var(--ease)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="top">
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z"
+            fill="#4C8DFF" stroke="none"/>
+      <circle cx="11" cy="13.5" r="2.6" fill="none" stroke="#141414" stroke-width="1.6"/>
+    </svg>
+    <div class="brand">{{.ServerName}} <span>· shared with you</span></div>
+  </div>
+
+{{if .Gone}}
+  <div class="card">
+    <div class="lock">
+      <div class="ring">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      </div>
+      <div class="name" style="font-size:18px">This link is not available</div>
+      <p class="meta">It may have expired, or been turned off by whoever shared it.
+      Ask them for a new one.</p>
+    </div>
+  </div>
+
+{{else if .NeedsPassword}}
+  <div class="card">
+    <div class="lock">
+      <div class="ring">
+        <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+      </div>
+      <div class="name" style="font-size:18px">This link needs a password</div>
+      <p class="meta">Whoever shared it can give you one.</p>
+    </div>
+    <form method="post" action="/s/{{.Token}}" style="margin-top:18px">
+      <input class="field" type="password" name="password" autocomplete="off"
+             autofocus placeholder="Password" aria-label="Password">
+      {{if .Wrong}}<div class="err">That password is not correct.</div>{{end}}
+      <div class="actions" style="margin-top:14px">
+        <button class="btn btn-primary" type="submit" style="width:100%">Open</button>
+      </div>
+    </form>
+  </div>
+
+{{else}}
+  <div class="card">
+    <div class="hero">
+      <div class="thumb">
+        {{if .Item.Thumb}}
+          <img src="/s/{{.Token}}/thumbnail{{if .Password}}?password={{.Password}}{{end}}" alt="">
+        {{else}}
+          {{template "glyph" icon .Item}}
+        {{end}}
+      </div>
+      <div style="min-width:0">
+        <div class="name">{{.Item.Name}}</div>
+        <div class="meta">
+          {{if isFolder .Item.Kind}}Folder{{else}}{{bytes .Item.Size}}{{end}}
+          {{if .Owner}} · shared by <b>{{.Owner}}</b>{{end}}
+        </div>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div>
+        <div class="fact-k">Shared by</div>
+        <div class="fact-v">{{if .Owner}}{{.Owner}}{{else}}Someone on {{.ServerName}}{{end}}</div>
+      </div>
+      <div>
+        <div class="fact-k">{{if isFolder .Item.Kind}}Contains{{else}}Size{{end}}</div>
+        <div class="fact-v">{{if isFolder .Item.Kind}}{{len .Children}} item{{if ne (len .Children) 1}}s{{end}}{{else}}{{bytes .Item.Size}}{{end}}</div>
+      </div>
+      <div>
+        <div class="fact-k">Available</div>
+        <div class="fact-v">{{if .ExpiresAt}}until {{when .ExpiresAt}}{{else}}no end date{{end}}</div>
+      </div>
+    </div>
+
+    {{if not (isFolder .Item.Kind)}}
+    <div class="actions">
+      {{if .AllowDownload}}
+      <a class="btn btn-primary" href="/s/{{.Token}}/download{{if .Password}}?password={{.Password}}{{end}}" download>
+        <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
+        Download
+      </a>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if not .AllowDownload}}
+    <div class="note">This link is view only, so the file cannot be downloaded from it.</div>
+    {{end}}
+  </div>
+
+  {{if isFolder .Item.Kind}}
+  <div id="listing">{{template "listing.html" .}}</div>
+  {{end}}
+{{end}}
+
+</div>
+
+<div class="foot">
+  <div class="foot-in">
+    <p><b>Local Drive</b> is a private alternative to Google Drive that runs on
+    hardware its owner controls. This file is on their machine, not in anyone's cloud.</p>
+    <a class="btn btn-quiet" href="{{.BrandURL}}" target="_blank" rel="noopener noreferrer">
+      Get the app
+      <svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</div>
+
+</body>
+</html>{{end}}
+
+{{define "glyph"}}
+{{- if eq . "folder"}}<svg viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z"/></svg>
+{{- else if eq . "image"}}<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m5.5 17 4.5-4.5L14 16l2.5-2 2 2"/></svg>
+{{- else if eq . "video"}}<svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="13" rx="2.5"/><path d="m10.5 9.5 4.5 2.5-4.5 2.5z"/></svg>
+{{- else if eq . "audio"}}<svg viewBox="0 0 24 24"><path d="M9 17V6l9-2v11"/><circle cx="7" cy="17" r="2.2"/><circle cx="16" cy="15" r="2.2"/></svg>
+{{- else if eq . "pdf"}}<svg viewBox="0 0 24 24"><path d="M6 3.5h7L18 8v12.5H6z"/><path d="M13 3.5V8h5"/></svg>
+{{- else if eq . "text"}}<svg viewBox="0 0 24 24"><path d="M6 3.5h7L18 8v12.5H6z"/><path d="M13 3.5V8h5M9 13h6M9 16.5h6"/></svg>
+{{- else if eq . "archive"}}<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M12 5v5M10.5 10h3"/></svg>
+{{- else}}<svg viewBox="0 0 24 24"><path d="M6 3.5h7L18 8v12.5H6z"/><path d="M13 3.5V8h5"/></svg>
+{{- end}}
+{{end}}

@@ -32,7 +32,11 @@ func RunInit(args []string) int {
 			port = parsed
 		}
 	}
-	proxy := ProxyConfig{Port: port, Domain: os.Getenv("LD_DOMAIN")}
+	// Proxied, because init writes a configuration that can be started either
+	// way and cannot ask which. Keeping the port in share links is the answer
+	// that works under both: the bare binary answers on the configured port as
+	// well as on 443, while Caddy answers only on the configured port.
+	proxy := ProxyConfig{Port: port, Domain: os.Getenv("LD_DOMAIN"), Proxied: true}
 
 	// the secrets land in their own file beside the database, so .env stays
 	// something a person can read and edit without meeting a wall of entropy

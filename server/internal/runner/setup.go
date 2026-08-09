@@ -189,7 +189,7 @@ func doSetup(args []string) error {
 
 	// 6. every secret, generated, never blank and never a placeholder
 	setupStep("Writing configuration")
-	proxy := ProxyConfig{Port: port, Domain: domain, TLSEmail: tlsEmail}
+	proxy := ProxyConfig{Port: port, Domain: domain, TLSEmail: tlsEmail, Proxied: useDocker}
 	env := map[string]string{
 		"LD_PORT":                         strconv.Itoa(port),
 		"LD_DOMAIN":                       domain,
@@ -276,6 +276,14 @@ func doSetup(args []string) error {
 	} else {
 		baseURL = fmt.Sprintf("http://127.0.0.1:%d", port)
 	}
+
+	// 7a. video previews, fetched and proven here rather than later.
+	//
+	// Doing this now, while somebody is sitting in front of the terminal and
+	// expecting setup to take a minute, is the one moment where a download is
+	// not a surprise. Left to the server it happens in the background after
+	// start, and every video uploaded before it lands has no preview.
+	setupFFmpeg()
 
 	// 7b. put the binary on PATH, so every command below can be typed from
 	// anywhere instead of only from the directory it was downloaded into

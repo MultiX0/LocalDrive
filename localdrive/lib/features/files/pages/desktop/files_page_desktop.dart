@@ -15,6 +15,12 @@ import '../files_page.dart';
 /// zone over the listing, and a details pane on the right that opens when
 /// something is selected. None of that exists on a phone, and none of it is
 /// the mobile layout stretched.
+/// How much room the floating selection bar needs above the listing.
+///
+/// Its own margin and padding plus a line of text. Measured rather than
+/// guessed: 8 margin, 10 padding, a 20 high row, 10 padding, 8 margin.
+const double _selectionBarHeight = 56;
+
 class FilesPageDesktop extends HookConsumerWidget {
   const FilesPageDesktop({super.key, this.folderId, required this.filter});
 
@@ -110,6 +116,10 @@ class FilesPageDesktop extends HookConsumerWidget {
             Positioned.fill(
               child: FilesBrowser(
                 query: query,
+                // the bar floats over the listing, so the listing has to start
+                // below it or the first row sits underneath and cannot be seen
+                // or clicked
+                topInset: selection.isEmpty ? 0 : _selectionBarHeight,
                 emptyGlyph: switch (filter) {
                   FilesFilter.starred => LdGlyph.star,
                   FilesFilter.recent => LdGlyph.clock,
