@@ -31,11 +31,15 @@ uploads, downloads, thumbnails, search, trash, activity, and the WebSocket.
 
 | Missing | Why | What to do instead |
 | --- | --- | --- |
+| The browser client | Caddy is what serves the web bundle; the binary answers the API only | Use the Android, Windows, Linux or macOS app, or run Docker |
 | Drive management from the app | `mount` and `mergerfs` are Linux tools run by a privileged helper | Mount the drive with the operating system and point `LIBRARY_PATH` at it |
 | Network discovery | The announcer needs host networking | Type the address in the app once; it is remembered |
 
-The server degrades cleanly for both. Nothing errors; the features simply do
-not appear.
+Drive management and discovery degrade cleanly: nothing errors, the features
+simply do not appear. The browser client is different, and worth knowing before
+you deploy: opening the server's address in a browser returns
+`404 no such endpoint`, because the API is all that is listening. That is not a
+broken install.
 
 HTTPS is **not** on that list any more. Set `LD_DOMAIN` and the bare binary
 requests and renews its own certificate, with no proxy involved. It needs ports

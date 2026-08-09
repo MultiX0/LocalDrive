@@ -119,14 +119,16 @@ megabytes. On an old laptop or a Raspberry Pi with 1 GB of RAM that matters:
 the Docker daemon by itself costs more than this entire server does.
 
 A `docker-compose.yml` ships in `server/` and is worth using when you want one
-of two specific things, both of which are separate services the bare binary
+of three specific things, all of which are separate services the bare binary
 cannot provide:
 
+- **The browser client.** Caddy serves it. The bare binary answers the API and
+  nothing else, so use one of the apps with it, or run Docker.
 - Drive management from inside the app, which is Linux only
 - Network discovery, so phones find the server without typing an address
 
-HTTPS is not one of them. Set `LD_DOMAIN` and the binary requests and renews
-its own certificate, with nothing in front of it.
+HTTPS is no longer one of them. Set `LD_DOMAIN` and the binary requests and
+renews its own certificate, with nothing in front of it.
 
 ```
 cd server

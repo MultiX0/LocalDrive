@@ -223,27 +223,15 @@ func reportAddresses(install Install) int {
 	port := install.Port()
 	domain := env["LD_DOMAIN"]
 
-	// https happens when a domain is set and caddy can get a certificate for
-	// it. no domain means plain http, and printing https there sends people to
-	// an address that answers nothing.
-	tls := strings.TrimSpace(domain) != "" && underDocker(install)
-	scheme := map[bool]string{true: "https", false: "http"}[tls]
+	kind := TLSKindFor(domain, env["LD_TLS"], underDocker(install))
 
 	fmt.Println("  Open one of these:")
-	if domain != "" {
-		if port == 443 && tls {
-			fmt.Printf("    %s://%s\n", scheme, domain)
-		} else {
-			fmt.Printf("    %s://%s:%d\n", scheme, domain, port)
-		}
-	}
-	for _, address := range LANAddresses(port, tls) {
+	for _, address := range ServerAddresses(domain, port, kind) {
 		fmt.Println("    " + address)
 	}
-	if !tls {
+	if note := AddressNote(domain, kind); note != "" {
 		fmt.Println()
-		fmt.Println("  Plain http. Set LD_DOMAIN in .env to a domain pointing here")
-		fmt.Println("  and Caddy gets a real certificate on its own.")
+		fmt.Println("  " + note)
 	}
 	fmt.Println()
 	return 0

@@ -317,10 +317,8 @@ func doSetup(args []string) error {
 
 	// 9. where to go, including from a phone
 	setupStep("You are ready")
-	addresses := LANAddresses(port, domain != "")
-	if domain != "" {
-		addresses = append([]string{proxy.BaseURL()}, addresses...)
-	}
+	kind := TLSKindFor(domain, "", useDocker)
+	addresses := ServerAddresses(domain, port, kind)
 	for _, address := range addresses {
 		fmt.Println("    " + address)
 	}
@@ -330,13 +328,8 @@ func doSetup(args []string) error {
 	}
 	fmt.Println()
 	fmt.Println("  Open one of those, or scan the code above from a phone.")
-	if domain == "" {
-		fmt.Println()
-		fmt.Println("  This is plain http. On your own network that is usually what you")
-		fmt.Println("  want, since no certificate authority will issue for an ip address.")
-		fmt.Println("  If you are reaching this server from outside, point a domain at it")
-		fmt.Println("  and set LD_DOMAIN in .env for real https.")
-	}
+	fmt.Println()
+	fmt.Println("  " + AddressNote(domain, kind))
 	fmt.Println()
 	fmt.Println("  " + cli + " status    where it is and whether it is up")
 	fmt.Println("  " + cli + " logs      follow the log")
