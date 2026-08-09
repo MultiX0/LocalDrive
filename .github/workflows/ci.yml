@@ -53,6 +53,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.25"
+          # the module lives in server/, not at the root. Without this the
+          # cache lookup goes looking for a go.mod beside the workflow, misses,
+          # and every run downloads the module set again.
+          cache-dependency-path: server/go.sum
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - run: govulncheck ./...
 
@@ -98,6 +102,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.25"
+          cache-dependency-path: server/go.sum
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
