@@ -8,16 +8,31 @@ sidebar_position: 1
 
 Everything is one executable, for Windows, Linux, and macOS.
 
-## Run it
+## Get it and run it
 
-The release asset is named `server` for Linux and `server.exe` for Windows. On
-Linux and macOS a fresh download is not executable yet, so allow it to run
-first:
+On Linux:
 
 ```
-chmod +x ./server
+wget https://github.com/MultiX0/LocalDrive/releases/latest/download/server
+chmod +x server
 ./server
 ```
+
+On Windows, in PowerShell:
+
+```
+Invoke-WebRequest https://github.com/MultiX0/LocalDrive/releases/latest/download/server.exe -OutFile server.exe
+.\server.exe
+```
+
+That URL always points at the newest release. On a Raspberry Pi or an ARM
+server, use `server-arm64` in place of `server`. On macOS, build from source:
+`cd server && go build ./cmd/localdrive`.
+
+To take the file by hand instead, it is on
+[the releases page](https://github.com/MultiX0/LocalDrive/releases/latest). A
+fresh download is not executable on Linux or macOS, which is what the `chmod`
+line above is for.
 
 Setup offers to install it as `localdrive`, so that after the first run you can
 type `localdrive` from any directory instead of `./server` from one. The rest

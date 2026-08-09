@@ -24,6 +24,8 @@ export default async function DownloadPage() {
         lead="One binary. Build it yourself in two commands, or take a prebuilt one."
       />
 
+      <QuickInstall />
+
       <WhatMatters />
 
       <Section title="Get the binary">
@@ -296,6 +298,77 @@ function BuildLinux() {
         />
       </Step>
     </ol>
+  );
+}
+
+/* -------------------------------------------------------- quick install */
+
+/**
+ * The whole install, in one place, at the top.
+ *
+ * Written out rather than piped into a shell. A one line curl into sh is the
+ * shape people are used to, and it asks someone to run whatever that url
+ * returns today without looking at it. These are commands somebody can read.
+ *
+ * The file keeps the name it is released under, "server". Renaming it here to
+ * "localdrive" would read better on its own and would then disagree with the
+ * download table, the steps further down this page, and what someone sees when
+ * they take the file by hand. localdrive is the name it gets later, from the
+ * PATH step in setup, and that story is told once rather than pre-empted here.
+ */
+function QuickInstall() {
+  // a fork that has not set NEXT_PUBLIC_GITHUB_REPO has no url to download
+  // from, and half a command is worse than none
+  if (!hasRepo) return null;
+
+  return (
+    <section className="mb-16">
+      <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-[1px] text-fg-muted">
+        Paste this
+      </h2>
+      <PlatformTabs windows={<InstallWindows />} linux={<InstallLinux />} />
+      <p className="mt-4 text-[14px] leading-[21px] text-fg-secondary">
+        Always the newest release. Setup then offers to put it on your PATH, and
+        after that it is <code className="text-fg">localdrive</code> from any
+        directory. On a Raspberry Pi or an ARM server, use{" "}
+        <code className="text-fg">server-arm64</code> in place of{" "}
+        <code className="text-fg">server</code>. On a Mac, build it from source
+        below.
+      </p>
+    </section>
+  );
+}
+
+function InstallLinux() {
+  return (
+    <Terminal
+      lines={[
+        {
+          kind: "command",
+          text: `wget ${GITHUB_URL}/releases/latest/download/server`,
+        },
+        { kind: "command", text: "chmod +x server" },
+        { kind: "command", text: "./server" },
+        { kind: "blank" },
+        { kind: "comment", text: "asks a few questions, then prints a QR code to scan" },
+      ]}
+    />
+  );
+}
+
+function InstallWindows() {
+  return (
+    <Terminal
+      lines={[
+        {
+          kind: "command",
+          text: `Invoke-WebRequest ${GITHUB_URL}/releases/latest/download/server.exe -OutFile server.exe`,
+        },
+        { kind: "command", text: ".\\server.exe" },
+        { kind: "blank" },
+        { kind: "comment", text: "PowerShell. double clicking the file does the same thing" },
+      ]}
+    />
   );
 }
 

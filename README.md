@@ -19,6 +19,29 @@
 
 ---
 
+**Linux**
+
+```
+wget https://github.com/MultiX0/LocalDrive/releases/latest/download/server
+chmod +x server
+./server
+```
+
+**Windows**, in PowerShell
+
+```
+Invoke-WebRequest https://github.com/MultiX0/LocalDrive/releases/latest/download/server.exe -OutFile server.exe
+.\server.exe
+```
+
+That is the whole install. One file, no runtime, nothing to configure first. It
+asks a few questions, generates its own secrets, and starts. Setup then offers
+to put it on your PATH, and after that you type `localdrive` from anywhere.
+
+On a Raspberry Pi or an ARM server, use `server-arm64` in place of `server`.
+
+---
+
 Local Drive is a private alternative to Google Drive that runs on a computer you
 own. Your files stay on your machine. There is no account to make with anyone,
 no subscription, and no company in the middle.
@@ -42,10 +65,9 @@ entirely and use a browser.
 
 ### 1. Download the server
 
-One file, no runtime and nothing to install. Grab `server` for Linux or
-`server.exe` for Windows from
-[the latest release](https://github.com/MultiX0/LocalDrive/releases/latest),
-and rename it to `localdrive` if you like.
+The command at the top does this. To do it by hand instead, take `server` for
+Linux or `server.exe` for Windows from
+[the latest release](https://github.com/MultiX0/LocalDrive/releases/latest).
 
 There is no published macOS build yet. The server does run on macOS, so on a
 Mac build it from source with `cd server && go build ./cmd/localdrive`.
@@ -59,12 +81,15 @@ chmod +x ./server
 ./server
 ```
 
-On Windows, run `server.exe`. Rename the file to `localdrive` if you prefer,
-and every command below takes that name instead.
+On Windows, run `server.exe` or double-click it.
 
 That is the whole command. There is nothing to configure first. It asks a few
 questions, generates every secret it needs, and starts. You never have to
 invent a password for anything internal.
+
+During setup it offers to put itself on your PATH, so that afterwards
+`localdrive` works from any directory. If you skip that, run
+`./server install-path` later.
 
 To keep it running after a reboot, see
 [Keeping it running](docs/self-hosting/running-always.mdx): systemd on Linux,
