@@ -109,3 +109,15 @@ tmp/
 server/web/*
 !server/web/README.md
 !server/web/index.html
+
+# Firebase (personal deployment, not part of the product)
+firebase.json
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+firebaseConfig.*
+**/firebase_options.dart
+firebase-*.json
+*-firebase-adminsdk-*.json
+service-account*.json
