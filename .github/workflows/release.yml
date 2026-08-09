@@ -55,15 +55,20 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         # the version is stamped from the tag, so `localdrive version` reports
         # what was actually released rather than a placeholder
+        # into dist/ rather than beside the source. The linux amd64 asset is
+        # named "server", which is also the name of this directory: writing it
+        # to ../server put the binary inside the source tree and shipped the
+        # whole tree as the release asset.
         run: |
+          mkdir -p ../dist
           go build -trimpath \
             -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
-            -o "../${{ matrix.asset }}" ./cmd/localdrive
+            -o "../dist/${{ matrix.asset }}" ./cmd/localdrive
 
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
           if-no-files-found: error
 
   # --------------------------------------------------------- android client
