@@ -82,12 +82,57 @@ func runServer(args []string) error {
 	}
 
 	errCh := make(chan error, 1)
-	go func() {
-		log.Info("listening", "addr", cfg.Addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
+	running := []*http.Server{server}
+
+	// A domain is what turns the built in certificate on. Without one this is
+	// nil and nothing below runs: no extra listener, no acme client, no
+	// certificate directory. The server listens on cfg.Addr over plain http
+	// exactly as it did before any of this existed.
+	auto, err := maybeAutoTLS(cfg)
+	if err != nil {
+		return err
+	}
+
+	if auto == nil {
+		go func() {
+			log.Info("listening", "addr", cfg.Addr)
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
+		}()
+	} else {
+		listeners := auto.listeners(cfg.Addr, log)
+		if len(listeners) == 0 {
+			return fmt.Errorf("a domain is set but no https port could be opened; "+
+				"binding %d needs privileges this process does not have", tlsPort)
 		}
-	}()
+		running = running[:0]
+		for _, ln := range listeners {
+			srv := &http.Server{
+				Handler:           application.Handler(),
+				ReadHeaderTimeout: 15 * time.Second,
+				IdleTimeout:       120 * time.Second,
+				BaseContext:       func(net.Listener) context.Context { return context.Background() },
+				ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
+			}
+			running = append(running, srv)
+			go func(s *http.Server, l net.Listener) {
+				if err := s.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+					errCh <- err
+				}
+			}(srv, ln)
+		}
+		// the challenge listener is how a certificate is issued at all, but a
+		// busy port 80 should not stop the server that is already serving
+		challenge := auto.challengeServer(log)
+		running = append(running, challenge)
+		go func() {
+			if err := challenge.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Warn("no listener for the certificate challenge, renewal will fail",
+					"port", acmePort, "error", err)
+			}
+		}()
+	}
 
 	select {
 	case err := <-errCh:
@@ -98,8 +143,10 @@ func runServer(args []string) error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Warn("http shutdown was not clean", "error", err)
+	for _, s := range running {
+		if err := s.Shutdown(shutdownCtx); err != nil {
+			log.Warn("http shutdown was not clean", "addr", s.Addr, "error", err)
+		}
 	}
 	if err := application.Close(shutdownCtx); err != nil {
 		log.Warn("service shutdown was not clean", "error", err)

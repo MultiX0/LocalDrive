@@ -83,21 +83,52 @@ The addresses it prints turn into `https://` once a domain is set.
 
 ### Ports
 
-Let's Encrypt's HTTP challenge needs port 80 reachable from the internet at the
-time of issue. If that is not possible, use the DNS challenge instead, which
-proves ownership through a DNS record and needs no inbound port at all. That
-requires a Caddy build with your DNS provider's plugin; see the
+Let's Encrypt only ever connects back on **port 80 or port 443**. That is the
+protocol, not a setting: a server reachable only on 7443 can never be issued a
+certificate, however it is configured. Both need to be reachable from the
+internet at the time of issue, and again at every renewal.
+
+Port 7443 keeps working alongside them. It is where the server answers; 80 and
+443 are how the certificate is proved and renewed.
+
+If neither port can be opened, use the DNS challenge instead, which proves
+ownership through a DNS record and needs no inbound port at all. That requires
+Docker and a Caddy build with your DNS provider's plugin; see the
 [Caddy documentation](https://caddyserver.com/docs/automatic-https).
 
 ### Without Docker
 
-The bare binary speaks HTTP and does not terminate TLS. That is not a missing
-feature so much as a separate job: certificate issue and renewal is what Caddy
-is for, and reimplementing it inside the server would be a worse version of it.
+The bare binary gets its own certificate too. Set `LD_DOMAIN` and restart, and
+it requests one from Let's Encrypt, serves HTTPS and renews on its own, with no
+proxy in front of it and nothing else to install.
 
-To run bare with HTTPS, put any reverse proxy in front of it, point that at the
-server's port, and let the proxy hold the certificate. See
-[Running without Docker](/getting-started/without-docker).
+```
+LD_DOMAIN=drive.example.com
+LD_TLS_EMAIL=you@example.com
+```
+
+It serves that certificate on **443 and on your configured port both**, so
+`https://drive.example.com` and `https://drive.example.com:7443` are the same
+server.
+
+Two things this needs:
+
+- **Ports 80 and 443 open**, for the reasons in [Ports](#ports) below. On a
+  firewalled machine that is `ufw allow 80` and `ufw allow 443`.
+- **Permission to bind them.** Ports below 1024 are privileged on Linux, so run
+  it as root, or grant the binary the capability once:
+
+  ```
+  sudo setcap 'cap_net_bind_service=+ep' ./localdrive
+  ```
+
+If 443 cannot be opened it says so and keeps serving on your own port rather
+than refusing to start.
+
+To use a proxy instead, set `LD_TLS=off`, put any reverse proxy in front, and
+let the proxy hold the certificate. Docker installs do this already: the
+compose file pins `LD_TLS=off`, because Caddy owns the certificate there and
+two clients asking for the same name would race each other and both fail.
 
 ## Reaching it from outside your network
 

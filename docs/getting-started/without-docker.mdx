@@ -31,12 +31,16 @@ uploads, downloads, thumbnails, search, trash, activity, and the WebSocket.
 
 | Missing | Why | What to do instead |
 | --- | --- | --- |
-| HTTPS | Caddy is what terminates TLS | Put any reverse proxy in front, or use it on a trusted network |
 | Drive management from the app | `mount` and `mergerfs` are Linux tools run by a privileged helper | Mount the drive with the operating system and point `LIBRARY_PATH` at it |
 | Network discovery | The announcer needs host networking | Type the address in the app once; it is remembered |
 
-The server degrades cleanly for all three. Nothing errors; the features simply
-do not appear.
+The server degrades cleanly for both. Nothing errors; the features simply do
+not appear.
+
+HTTPS is **not** on that list any more. Set `LD_DOMAIN` and the bare binary
+requests and renews its own certificate, with no proxy involved. It needs ports
+80 and 443 reachable, since those are the only two Let's Encrypt will connect
+back on. See [HTTP and HTTPS](/self-hosting/https).
 
 ## Running it
 

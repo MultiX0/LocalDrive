@@ -121,8 +121,10 @@ client that chooses not to ask.
 
 - Plain HTTP by default, because no certificate authority issues for a LAN
   address and a self signed certificate is refused outright by the app. With a
-  domain set, Caddy terminates TLS once in front and the Go process listens on
-  plain HTTP behind it. See [HTTP and HTTPS](/self-hosting/https).
+  domain set the server obtains and renews its own certificate through ACME and
+  terminates TLS itself. Under Docker that job belongs to Caddy instead, and
+  the compose file pins `LD_TLS=off` so only one of them asks. See
+  [HTTP and HTTPS](/self-hosting/https).
 - Argon2id password hashing, cost documented in `.env.example`.
 - Short lived JWT access tokens plus rotating, single use refresh tokens,
   hashed at rest, one row per device, individually revocable.

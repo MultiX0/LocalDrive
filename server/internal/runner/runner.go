@@ -23,6 +23,19 @@ const DefaultPort = 7443
 // behind the proxy. Nothing outside the compose network ever reaches it.
 const InternalPort = 8080
 
+// CLIName is how this binary was actually invoked, so every command it prints
+// can be pasted back into the same shell.
+//
+// The release asset for Linux is called "server", and nothing installs it onto
+// PATH, so printing a bare "localdrive start" sends the reader to a command
+// that does not exist on their machine.
+func CLIName() string {
+	if name := strings.TrimSpace(os.Args[0]); name != "" {
+		return name
+	}
+	return "localdrive"
+}
+
 // Mode is one thing the binary can be told to do.
 type Mode struct {
 	Name    string
@@ -45,6 +58,11 @@ func Modes() []Mode {
 			Name:    "init",
 			Summary: "write a working configuration without asking anything",
 			Run:     RunInit,
+		},
+		{
+			Name:    "install-path",
+			Summary: "make " + CommandName + " a command you can type anywhere",
+			Run:     RunInstallPath,
 		},
 		{
 			Name:    "serve",

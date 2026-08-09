@@ -6,19 +6,28 @@ sidebar_position: 1
 
 # Quick start
 
-Everything is one executable, `localdrive`, for Windows, Linux, and macOS.
+Everything is one executable, for Windows, Linux, and macOS.
 
 ## Run it
 
+The release asset is named `server` for Linux and `server.exe` for Windows. On
+Linux and macOS a fresh download is not executable yet, so allow it to run
+first:
+
 ```
-localdrive
+chmod +x ./server
+./server
 ```
+
+Setup offers to install it as `localdrive`, so that after the first run you can
+type `localdrive` from any directory instead of `./server` from one. The rest
+of these guides use that name.
 
 With no arguments it runs setup. It asks:
 
 1. **Where to keep everything.** One folder holds the configuration, the
    database, and the files.
-2. **How to run.** Directly on the machine by default, which is lighter. Docker if you want https, drive management or network discovery.
+2. **How to run.** Directly on the machine by default, which is lighter. Docker if you want drive management or network discovery. HTTPS works either way.
 3. **Which port.** The default is 7443. See [Ports and addresses](./ports-and-addresses).
 4. **Whether you have a domain.** Most people do not, and do not need one.
 5. **An admin username and password.**

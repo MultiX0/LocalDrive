@@ -247,7 +247,8 @@ memory. On an old laptop, a Raspberry Pi, or anything with 1 GB of RAM, that
 difference is the difference between comfortable and not: the Docker daemon
 alone costs more than the entire Local Drive server does.
 
-Docker earns its place when you want automatic HTTPS through Caddy, drive
-management, or network discovery, because those are separate services and the
-bare binary cannot provide them alone. If none of those matter to you, the
+Docker earns its place when you want drive management or network discovery,
+because those are separate services and the bare binary cannot provide them
+alone. HTTPS is no longer one of those reasons: set `LD_DOMAIN` and the binary
+gets its own certificate. If neither of the other two matters to you, the
 binary is the better answer.

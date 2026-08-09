@@ -49,8 +49,9 @@ the file regenerates them, which signs everyone out.
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `LD_PORT` | `7443` | The one port everything serves on |
-| `LD_DOMAIN` | empty | Leave empty unless you own one |
+| `LD_DOMAIN` | empty | Leave empty unless you own one. Setting it turns on HTTPS |
 | `LD_TLS_EMAIL` | empty | Renewal notices, only with a domain |
+| `LD_TLS` | `auto` | `off` stops the server asking for its own certificate. Docker pins this, since Caddy holds it there |
 | `PUBLIC_BASE_URL` | empty | Absolute base for share and invite links |
 | `CORS_ALLOWED_ORIGINS` | empty | Exact origins, comma separated, never `*` |
 

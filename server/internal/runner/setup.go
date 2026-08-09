@@ -246,11 +246,12 @@ func doSetup(args []string) error {
 	}
 
 	// 7. bring it up and wait for it to actually answer
-	// https only when a domain is set, since that is the only case where caddy
-	// has a certificate. otherwise it is listening on plain http and asking
-	// for https here would fail the handshake before the request went out
+	// https needs caddy, and caddy only exists in the compose file. Running
+	// directly is the Go process on its own, speaking plain http whether or not
+	// a domain points at it, so keying this off the domain alone advertised an
+	// https address that nothing was listening for.
 	scheme := "http"
-	if domain != "" {
+	if domain != "" && useDocker {
 		scheme = "https"
 	}
 	baseURL := fmt.Sprintf("%s://127.0.0.1:%d", scheme, port)
@@ -265,10 +266,38 @@ func doSetup(args []string) error {
 		setupOk("The server is up")
 	} else {
 		baseURL = fmt.Sprintf("http://127.0.0.1:%d", port)
+	}
+
+	// 7b. put the binary on PATH, so every command below can be typed from
+	// anywhere instead of only from the directory it was downloaded into
+	cli := CLIName()
+	setupStep("Making " + CommandName + " a command you can type anywhere")
+	if setupConfirm(in, "Install "+CommandName+" on your PATH") {
+		installed, err := InstallOnPath()
+		switch {
+		case err != nil:
+			setupOk("Could not install it: " + err.Error())
+			setupOk("Keep using " + cli + " from this directory.")
+		case installed.AlreadyThere:
+			cli = CommandName
+			setupOk("Already installed at " + installed.Target)
+		default:
+			cli = CommandName
+			setupOk("Installed " + installed.Target)
+			if installed.ProfileLine != "" {
+				setupOk("Added it to your PATH in " + installed.Profile)
+				setupOk("For this shell only, run: " + installed.ProfileLine)
+			}
+		}
+	} else {
+		setupOk("Skipped. Run it as " + cli + " from this directory.")
+	}
+
+	if !useDocker {
 		fmt.Println()
 		fmt.Println("  Start it whenever you like with:")
 		fmt.Println()
-		fmt.Println("      localdrive start")
+		fmt.Println("      " + cli + " start")
 		fmt.Println()
 	}
 
@@ -309,9 +338,9 @@ func doSetup(args []string) error {
 		fmt.Println("  and set LD_DOMAIN in .env for real https.")
 	}
 	fmt.Println()
-	fmt.Println("  localdrive status    where it is and whether it is up")
-	fmt.Println("  localdrive logs      follow the log")
-	fmt.Println("  localdrive stop      stop it")
+	fmt.Println("  " + cli + " status    where it is and whether it is up")
+	fmt.Println("  " + cli + " logs      follow the log")
+	fmt.Println("  " + cli + " stop      stop it")
 	fmt.Println()
 	return nil
 }

@@ -95,6 +95,26 @@ a browser does that.
 Use `init` in a script, a Dockerfile, or anywhere nobody is present to answer a
 prompt. It will not overwrite files that already exist.
 
+### `install-path`
+
+Makes `localdrive` a command you can type from any directory.
+
+```
+localdrive install-path
+```
+
+The download is named `server`, and a downloaded file is not on your PATH, so
+every command on this page would otherwise have to be run as `./server` from
+one directory. `setup` offers this already; this is for anyone who said no, or
+who moved the binary afterwards.
+
+With root it installs to `/usr/local/bin`. Without root it uses
+`~/.local/bin` and adds that to your shell profile if it is not on PATH
+already, so it works either way.
+
+It installs a symlink rather than a copy, so `localdrive update` keeps the
+command pointing at the binary it just replaced. Running it twice is safe.
+
 ## Running
 
 ### `serve`
@@ -167,7 +187,7 @@ localdrive status
     http://my-server.local:7443
 
   Plain http. Set LD_DOMAIN in .env to a domain pointing here
-  and Caddy gets a real certificate on its own.
+  and it gets a real certificate on its own.
 ```
 
 When nothing is up:

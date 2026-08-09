@@ -41,6 +41,16 @@ type Config struct {
 
 	PublicBaseURL string
 
+	// A domain to get a certificate for, so the bare binary can serve https
+	// without a proxy in front of it. Empty means plain http, which is the
+	// right answer on a home network where no authority will issue for an ip.
+	//
+	// Compose pins TLSMode to "off" for the container, because Caddy owns the
+	// certificate there and two ACME clients for one domain would race.
+	TLSDomain string
+	TLSEmail  string
+	TLSMode   string
+
 	// seeds for the server_settings row, only used on first start
 	EnableLANDiscoveryDefault    bool
 	RequireDeviceApprovalDefault bool
@@ -176,6 +186,9 @@ func Load() (*Config, error) {
 	}
 
 	c.PublicBaseURL = strings.TrimSuffix(l.str("PUBLIC_BASE_URL", ""), "/")
+	c.TLSDomain = strings.TrimSpace(l.str("LD_DOMAIN", ""))
+	c.TLSEmail = strings.TrimSpace(l.str("LD_TLS_EMAIL", ""))
+	c.TLSMode = strings.ToLower(strings.TrimSpace(l.str("LD_TLS", "auto")))
 
 	c.EnableLANDiscoveryDefault = l.boolean("ENABLE_LAN_DISCOVERY_DEFAULT", true)
 	c.RequireDeviceApprovalDefault = l.boolean("REQUIRE_DEVICE_APPROVAL_DEFAULT", true)

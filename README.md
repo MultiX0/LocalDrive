@@ -49,9 +49,16 @@ and rename it to `localdrive` if you like.
 
 ### 2. Start it
 
+On Linux and macOS, a fresh download is not executable yet, so allow it to run
+first:
+
 ```
-./localdrive
+chmod +x ./server
+./server
 ```
+
+On Windows, run `server.exe`. Rename the file to `localdrive` if you prefer,
+and every command below takes that name instead.
 
 That is the whole command. There is nothing to configure first. It asks a few
 questions, generates every secret it needs, and starts. You never have to
@@ -69,8 +76,10 @@ The first screen asks you to make an admin account. That is you. Done.
 
 Plain HTTP is the default, because no certificate authority will issue a
 certificate for an address on your own network. If you have a domain pointing
-at the machine, set `LD_DOMAIN` in `.env` and Caddy gets a real certificate on
-its own. See [HTTP and HTTPS](docs/self-hosting/https.mdx).
+at the machine, set `LD_DOMAIN` in `.env` and it gets a real certificate on its
+own, Docker or not. That needs ports 80 and 443 open, since those are the only
+two Let's Encrypt will connect back on. See
+[HTTP and HTTPS](docs/self-hosting/https.mdx).
 
 ---
 
@@ -110,12 +119,14 @@ megabytes. On an old laptop or a Raspberry Pi with 1 GB of RAM that matters:
 the Docker daemon by itself costs more than this entire server does.
 
 A `docker-compose.yml` ships in `server/` and is worth using when you want one
-of three specific things, all of which are separate services the bare binary
+of two specific things, both of which are separate services the bare binary
 cannot provide:
 
-- Automatic HTTPS through Caddy, for a real domain
 - Drive management from inside the app, which is Linux only
 - Network discovery, so phones find the server without typing an address
+
+HTTPS is not one of them. Set `LD_DOMAIN` and the binary requests and renews
+its own certificate, with nothing in front of it.
 
 ```
 cd server

@@ -172,6 +172,10 @@ services:
     # "localdrive serve", so the same file is correct in both modes.
     environment:
       LISTEN_ADDR: ":` + fmt.Sprint(InternalPort) + `"
+      # caddy owns the certificate in this mode. Two acme clients asking for
+      # the same domain race for the challenge and both lose, so the server
+      # never asks for one of its own here.
+      LD_TLS: "off"
       DB_PATH: /data/db/localdrive.sqlite
       LIBRARY_PATH: /data/library
       EXTERNAL_MOUNTS_PATH: /data/external
