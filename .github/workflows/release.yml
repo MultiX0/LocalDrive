@@ -40,9 +40,9 @@ jobs:
             asset: server.exe
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
@@ -60,7 +60,7 @@ jobs:
             -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
             -o "../${{ matrix.asset }}" ./cmd/localdrive
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
@@ -71,9 +71,9 @@ jobs:
     name: Client (Android)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -140,7 +140,7 @@ jobs:
         if: always()
         run: rm -f localdrive/android/release.jks localdrive/android/key.properties
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localdrive-client.apk
           path: localdrive-client.apk
@@ -155,7 +155,7 @@ jobs:
     name: Client (Windows)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
@@ -184,13 +184,13 @@ jobs:
             localdrive\windows\installer.iss
           Move-Item localdrive\windows\localdrive-client-setup.exe .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localdrive-client-windows.zip
           path: localdrive-client-windows.zip
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localdrive-client-setup.exe
           path: localdrive-client-setup.exe
@@ -205,7 +205,7 @@ jobs:
     name: Client (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
@@ -228,7 +228,7 @@ jobs:
           tar -czf localdrive-client-linux.tar.gz \
             -C localdrive/build/linux/x64/release/bundle .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localdrive-client-linux.tar.gz
           path: localdrive-client-linux.tar.gz
@@ -240,7 +240,7 @@ jobs:
     needs: [server, android, windows-client, linux-client]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: assets
           merge-multiple: true
@@ -251,7 +251,7 @@ jobs:
         # trusting the transport
         run: sha256sum * > SHA256SUMS
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
