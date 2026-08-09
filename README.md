@@ -187,16 +187,7 @@ Every photo in one timeline, grouped by month and ordered by when it was taken
 rather than when it was uploaded. The grid is masonry, so a panorama stays a
 panorama instead of being cropped to a square.
 
-<img src="landing/public/showcase/app/app-gallery-desktop.png" alt="The Local Drive gallery on desktop, a masonry grid grouped by month" width="100%">
-
-The same app on a phone. Not the desktop layout squeezed: the navigation, the
-chrome and the grid are all different, because a thumb and a pointer want
-different things.
-
-<p>
-  <img src="landing/public/showcase/app/app-gallery-phone.png" alt="The gallery on a phone" width="31%">
-  <img src="landing/public/showcase/app/app-files-phone.png" alt="The files browser on a phone" width="31%">
-</p>
+<img src="landing/public/showcase/app/app-gallery.png" alt="The Local Drive gallery on desktop, a masonry grid grouped by month" width="100%">
 
 These are screenshots of the running app, not mockups.
 
