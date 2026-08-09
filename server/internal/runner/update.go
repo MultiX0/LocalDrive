@@ -101,7 +101,7 @@ func RunUpdate(args []string) int {
 	fmt.Println()
 	fmt.Println("  Restarting")
 
-	wasRunning, _ := probeHealth(install.Port())
+	wasRunning, _ := probeHealth(install.Port(), installDomain(install))
 	if !wasRunning {
 		fmt.Println("    The server was not running, so nothing to restart.")
 		fmt.Println()
@@ -149,7 +149,7 @@ func RunRollback(args []string) int {
 	if err := updater.Rollback(); err != nil {
 		return fail(err)
 	}
-	if running, _ := probeHealth(install.Port()); running {
+	if running, _ := probeHealth(install.Port(), installDomain(install)); running {
 		RunRestart(args)
 	}
 
@@ -162,7 +162,7 @@ func RunRollback(args []string) int {
 func waitHealthy(install Install, within time.Duration) error {
 	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
-		if ok, _ := probeHealth(install.Port()); ok {
+		if ok, _ := probeHealth(install.Port(), installDomain(install)); ok {
 			return nil
 		}
 		time.Sleep(2 * time.Second)

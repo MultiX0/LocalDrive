@@ -111,6 +111,38 @@ It serves that certificate on **443 and on your configured port both**, so
 `https://drive.example.com` and `https://drive.example.com:7443` are the same
 server.
 
+### Reaching it by address once a domain is set
+
+A certificate covers a name. It cannot cover `192.168.1.10`, because no
+authority signs certificates for addresses like that one, so a phone on the same
+network has nothing to verify and HTTPS to that address can never work.
+
+Setting a domain therefore must not be the same as giving up local access. Your
+configured port accepts **either protocol**, decided per connection by what the
+client actually sends:
+
+```
+https://drive.example.com          the name, over the certificate
+https://drive.example.com:7443     the same thing on your own port
+http://192.168.1.10:7443           the same server, from the same network
+```
+
+Port 443 is HTTPS only, since every client already assumes that. The rule for
+plain HTTP on your own port is short:
+
+- From your own network, an address is served as it is. That is a phone on the
+  same wifi, and it is the case this exists for.
+- Asking for the **domain** over plain HTTP is redirected to HTTPS, so the name
+  is never served unencrypted.
+- From the public internet, plain HTTP to the machine's address is redirected to
+  the domain, because the name works from there and a password does not belong
+  in the clear on the open internet.
+
+Nothing here is a setting. The apps already follow the same rule when you type
+an address: an IP or a `.local` name gets `http://`, a public domain gets
+`https://`. See
+[Ports and addresses](/getting-started/ports-and-addresses).
+
 Two things this needs:
 
 - **Ports 80 and 443 open**, for the reasons in [Ports](#ports) below. On a

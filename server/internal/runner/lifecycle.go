@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -160,7 +161,7 @@ func RunStatus(args []string) int {
 	fmt.Printf("  Mode        %s\n", modeName(install))
 	fmt.Println()
 
-	reachable, detail := probeHealth(port)
+	reachable, detail := probeHealth(port, domain)
 	if reachable {
 		fmt.Println("  Running")
 	} else {
@@ -274,17 +275,39 @@ func reportAddresses(install Install) int {
 
 // probeHealth asks the server whether it is up, over loopback, so this works
 // the same on a machine with no name resolution for its own address.
-func probeHealth(port int) (bool, string) {
+func probeHealth(port int, domain string) (bool, string) {
+	// Always connect to loopback, whatever name is in the url. A server with a
+	// domain answers the tls handshake only for that name, because the
+	// certificate it holds covers that name and nothing else: asking for
+	// 127.0.0.1 is refused before any request is sent. So the name goes in the
+	// url and the address goes in the dialer.
+	dial := func(ctx context.Context, network, _ string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, network, fmt.Sprintf("127.0.0.1:%d", port))
+	}
 	client := &http.Client{
 		Timeout: 4 * time.Second,
 		Transport: &http.Transport{
-			// this only ever talks to loopback, and a fresh install has a
-			// certificate it issued to itself
+			DialContext:    dial,
+			DialTLSContext: nil,
+			// the certificate is real but issued for a public name, and this
+			// connection is to loopback, so the name will never match
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
 		},
 	}
-	for _, scheme := range []string{"https", "http"} {
-		url := fmt.Sprintf("%s://127.0.0.1:%d/healthz", scheme, port)
+
+	// Plain http to loopback first. It answers on every kind of install, since
+	// the port takes either protocol, and it needs no certificate to be valid
+	// yet. Then https under the domain, which is what a proxy in front answers
+	// to, and what this server answers on 443.
+	attempts := []string{fmt.Sprintf("http://127.0.0.1:%d/healthz", port)}
+	if host := strings.TrimSpace(domain); host != "" {
+		attempts = append(attempts, fmt.Sprintf("https://%s:%d/healthz", host, port))
+	} else {
+		attempts = append(attempts, fmt.Sprintf("https://127.0.0.1:%d/healthz", port))
+	}
+
+	for _, url := range attempts {
 		resp, err := client.Get(url)
 		if err != nil {
 			continue
@@ -295,6 +318,11 @@ func probeHealth(port int) (bool, string) {
 		}
 	}
 	return false, fmt.Sprintf("nothing on port %d", port)
+}
+
+// installDomain is the name this install answers to, empty when it has none.
+func installDomain(install Install) string {
+	return strings.TrimSpace(install.ReadEnv()["LD_DOMAIN"])
 }
 
 func compose(install Install, args ...string) error {

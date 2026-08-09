@@ -107,9 +107,13 @@ func runServer(args []string) error {
 				"binding %d needs privileges this process does not have", tlsPort)
 		}
 		running = running[:0]
+		// the configured port answers plain http as well, so a request that
+		// arrives in the clear has to be sorted out before it reaches the
+		// application
+		guarded := auto.guard(application.Handler())
 		for _, ln := range listeners {
 			srv := &http.Server{
-				Handler:           application.Handler(),
+				Handler:           guarded,
 				ReadHeaderTimeout: 15 * time.Second,
 				IdleTimeout:       120 * time.Second,
 				BaseContext:       func(net.Listener) context.Context { return context.Background() },

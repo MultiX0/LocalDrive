@@ -269,7 +269,7 @@ func doSetup(args []string) error {
 		if err := setupComposeUp(install); err != nil {
 			return err
 		}
-		if err := setupWaitForHealth(port); err != nil {
+		if err := setupWaitForHealth(port, domain); err != nil {
 			return err
 		}
 		setupOk("The server is up")
@@ -484,10 +484,10 @@ func setupRunWithProgress(cmd *exec.Cmd, label string) error {
 	}
 }
 
-func setupWaitForHealth(port int) error {
+func setupWaitForHealth(port int, domain string) error {
 	deadline := time.Now().Add(3 * time.Minute)
 	for time.Now().Before(deadline) {
-		if up, _ := probeHealth(port); up {
+		if up, _ := probeHealth(port, domain); up {
 			fmt.Print("\r                                        \r")
 			return nil
 		}

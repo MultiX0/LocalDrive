@@ -56,6 +56,11 @@ links become absolute URLs to it. Without one there is no single correct
 address, since the same server answers on every address the machine has, so the
 app fills in whichever one it connected to.
 
+A domain does not cost you the addresses you had before. The machine's own
+addresses keep working on the same port over plain HTTP, because a certificate
+covers a name and never an address. The table below still applies unchanged.
+See [HTTP and HTTPS](/self-hosting/https) for which requests get redirected.
+
 ## What the client does with a typed address
 
 | Typed | Becomes | Why |

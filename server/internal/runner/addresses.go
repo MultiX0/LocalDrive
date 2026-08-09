@@ -38,10 +38,11 @@ func TLSKindFor(domain, tlsMode string, docker bool) TLSKind {
 
 // ServerAddresses is every address that actually answers, most useful first.
 //
-// The machine's own ip addresses are left out once there is a certificate.
-// They still accept a connection, but the certificate covers the domain, so
-// hitting an ip warns about the name. Do not list those next to ones that
-// work.
+// With a built in certificate the name is https and the machine's own
+// addresses are http, on the same port. That is not an inconsistency to tidy
+// up: the certificate covers the domain and no authority will ever sign one
+// for a lan address, so the port takes either protocol and each address is
+// listed with the one that works for it.
 func ServerAddresses(domain string, port int, kind TLSKind) []string {
 	domain = strings.TrimSpace(domain)
 
@@ -50,6 +51,8 @@ func ServerAddresses(domain string, port int, kind TLSKind) []string {
 		out := []string{"https://" + domain}
 		if port != 443 {
 			out = append(out, fmt.Sprintf("https://%s:%d", domain, port))
+			// only the configured port sniffs the protocol; 443 is https alone
+			out = append(out, LANAddresses(port, false)...)
 		}
 		return out
 
@@ -74,9 +77,9 @@ func ServerAddresses(domain string, port int, kind TLSKind) []string {
 func AddressNote(domain string, kind TLSKind) string {
 	switch kind {
 	case TLSBuiltin:
-		return "Certificates are requested and renewed automatically. Ports 80 and 443\n" +
-			"  have to be reachable for that, and this machine's ip addresses will warn\n" +
-			"  about the certificate name because it is issued for the domain."
+		return "Certificates are requested and renewed automatically, which needs ports\n" +
+			"  80 and 443 reachable. The domain is https and this machine's own\n" +
+			"  addresses are http, because a certificate only ever covers the name."
 	case TLSProxy:
 		return "Caddy holds the certificate and renews it on its own."
 	}
