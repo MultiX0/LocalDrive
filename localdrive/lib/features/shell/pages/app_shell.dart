@@ -1,5 +1,6 @@
 import '../../../imports.dart';
 import '../../auth/controller/session_controller.dart';
+import '../../files/providers/files_providers.dart';
 import '../../files/widgets/shared/rename_sheet.dart';
 import '../../storage/providers/storage_providers.dart';
 import '../../upload/controller/transfer_controller.dart';
@@ -22,17 +23,42 @@ bool isTabDestination(String location) =>
 
 /// The navigation chrome every main screen sits inside: a floating pill bar on
 /// mobile, the same destinations as a persistent sidebar on desktop.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  AppLifecycleListener? _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Anything uploaded from a desktop while this app sat in the background is
+    // invisible until something asks the server again, and nothing did. Coming
+    // back to the app is exactly the moment the person expects to be looking at
+    // what is actually there.
+    _lifecycle = AppLifecycleListener(
+      onResume: () => refreshServerDataFrom(ref),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return LdResponsive(
-      mobile: (context) => _MobileShell(child: child),
-      tablet: (context) => _MobileShell(child: child),
-      desktop: (context) => _DesktopShell(child: child),
+      mobile: (context) => _MobileShell(child: widget.child),
+      tablet: (context) => _MobileShell(child: widget.child),
+      desktop: (context) => _DesktopShell(child: widget.child),
     );
   }
 }
@@ -145,7 +171,10 @@ class _MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: LdColors.backgroundPrimary,
       body: SafeArea(
-        bottom: false,
+        // the tab bar only shows on the tabs, and it is what holds the space
+        // above the gesture bar. Anywhere it is missing the body has to do it
+        // itself or the last row sits under the gesture bar.
+        bottom: !isTabDestination(location),
         child: Column(
           children: <Widget>[
             const _Banners(),

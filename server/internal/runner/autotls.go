@@ -52,8 +52,8 @@ func wantsAutoTLS(cfg *config.Config) bool {
 }
 
 // maybeAutoTLS returns nil when this server should stay on plain http, which
-// is every install that was never given a domain. A nil result is not an
-// error and not a fallback: it is the ordinary case.
+// is every install without a domain. nil here is the normal case, not an
+// error and not a degraded mode.
 func maybeAutoTLS(cfg *config.Config) (*autoTLS, error) {
 	if !wantsAutoTLS(cfg) {
 		return nil, nil

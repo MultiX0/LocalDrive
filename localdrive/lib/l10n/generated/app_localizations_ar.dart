@@ -569,6 +569,9 @@ class L10nAr extends L10n {
   String get viewList => 'قائمة';
 
   @override
+  String get actionSelect => 'تحديد';
+
+  @override
   String selectedCount(int count) {
     return '$count محدد';
   }

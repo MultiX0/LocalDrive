@@ -12,6 +12,30 @@ back on its own after a reboot, on each platform, and how to make the
 
 Every command here has been run rather than written from memory.
 
+## The short answer
+
+Setup offers this, and one command does it afterwards:
+
+```
+localdrive service
+```
+
+It registers the server with whatever the machine already uses to start things
+at boot: systemd on Linux, launchd on macOS, Task Scheduler on Windows. It then
+starts it and **checks it stayed up**, because a unit that cannot bind its port
+restarts forever and would otherwise be reported as running.
+
+On Linux it uses a system unit as root, and a user unit otherwise, so it needs
+no privileges you do not already have. The root unit is granted
+`CAP_NET_BIND_SERVICE` alone rather than running with everything, which is what
+lets it bind 443 for a certificate.
+
+If it says it did not stay up, `journalctl -u localdrive -n 30` says why. A port
+already in use is the usual cause.
+
+The rest of this page is what that command writes, for anyone who would rather
+do it by hand or needs to change it.
+
 ## With Docker, which is the short answer
 
 `docker compose up -d` already does this. The `-d` detaches it, and the restart

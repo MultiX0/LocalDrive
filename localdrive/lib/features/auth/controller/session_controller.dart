@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../offline/controller/offline_controller.dart';
 import '../../files/controller/files_controller.dart';
+import '../../files/providers/files_providers.dart';
 import '../../storage/providers/storage_providers.dart';
 import '../../../core/constants/storage_keys.dart';
 import '../../../core/services/api_client.dart';
@@ -299,6 +300,10 @@ class SessionController extends Notifier<SessionState> {
   void _refetchAfterSessionChange() {
     ref.invalidate(librariesProvider);
     ref.invalidate(filesControllerProvider);
+    // the listing providers were the ones actually showing the error. They
+    // call keepAlive, so the failure from before there was a token outlived
+    // the sign in that fixed it, and only the Try again button cleared it.
+    refreshServerData(ref);
   }
 
   void _connectSocket() {
@@ -360,6 +365,11 @@ class SessionController extends Notifier<SessionState> {
     // use this device has no business seeing any of it
     await ref.read(offlineFilesProvider).clear();
     await ref.read(localDbProvider).wipe();
+
+    // wiping the database is not enough on its own. The listing providers keep
+    // their last answer in memory, so without this the next server's home
+    // screen opens showing the previous server's files, which then fail to open
+    refreshServerData(ref);
 
     state = SessionState(
       stage: SessionStage.signedOut,

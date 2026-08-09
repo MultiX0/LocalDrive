@@ -7,6 +7,7 @@ import '../constants/ld_colors.dart';
 import '../constants/ld_motion.dart';
 import '../constants/ld_radii.dart';
 import 'ld_icons.dart';
+import 'ld_responsive.dart';
 import 'ld_tappable.dart';
 
 /// What a toast is telling the person.
@@ -160,10 +161,16 @@ class _LdToastCardState extends State<_LdToastCard>
       LdToastKind.info => LdGlyph.info,
     };
 
+    // A phone puts its gesture bar and navigation at the bottom, so a toast
+    // there covers the thing you were about to tap. On a desktop the bottom is
+    // empty and out of the way, which is where a notification belongs.
+    final fromTop = LdDeviceScope.of(context).isMobile;
+
     return Positioned(
       left: 0,
       right: 0,
-      bottom: media.padding.bottom + 24,
+      top: fromTop ? media.padding.top + 12 : null,
+      bottom: fromTop ? null : media.padding.bottom + 24,
       child: IgnorePointer(
         ignoring: _controller.status == AnimationStatus.reverse,
         // the overlay sits outside the page tree, so the toast brings its own
@@ -174,8 +181,10 @@ class _LdToastCardState extends State<_LdToastCard>
             opacity: curved,
             child: AnimatedBuilder(
               animation: curved,
+              // it slides in from the edge it is anchored to, so the movement
+              // reads as coming from off screen either way
               builder: (context, child) => Transform.translate(
-                offset: Offset(0, 20 * (1 - curved.value)),
+                offset: Offset(0, (fromTop ? -20 : 20) * (1 - curved.value)),
                 child: child,
               ),
               child: Center(

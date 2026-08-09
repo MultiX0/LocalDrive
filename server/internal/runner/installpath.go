@@ -10,7 +10,8 @@ import (
 )
 
 // CommandName is what this binary is called once it is on PATH. The release
-// asset is named "server", which is fine as a download and wrong as a command.
+// asset is named "server", which is a reasonable file name and a poor command
+// name.
 const CommandName = "localdrive"
 
 // PathInstall is what happened when the binary was put on PATH.
@@ -51,9 +52,9 @@ func RunInstallPath(args []string) int {
 
 // InstallOnPath makes this binary runnable as "localdrive" from any directory.
 //
-// Root gets /usr/local/bin. Everyone else gets ~/.local/bin, which is on PATH
-// on most distributions and is added to the shell profile when it is not, so
-// the promise that the command works afterwards holds without root.
+// Root gets /usr/local/bin. Everyone else gets ~/.local/bin, which most
+// distributions already have on PATH; when it is not there we add it to the
+// shell profile. Either way it works without root.
 func InstallOnPath() (PathInstall, error) {
 	exe, err := os.Executable()
 	if err != nil {

@@ -65,6 +65,11 @@ func Modes() []Mode {
 			Run:     RunInstallPath,
 		},
 		{
+			Name:    "service",
+			Summary: "run in the background and start again after a reboot",
+			Run:     RunServiceInstall,
+		},
+		{
 			Name:    "serve",
 			Summary: "run the server in the foreground, with no Docker",
 			Run:     RunServer,

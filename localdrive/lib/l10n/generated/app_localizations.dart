@@ -1171,6 +1171,12 @@ abstract class L10n {
   /// **'List'**
   String get viewList;
 
+  /// No description provided for @actionSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get actionSelect;
+
   /// No description provided for @selectedCount.
   ///
   /// In en, this message translates to:

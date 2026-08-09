@@ -261,3 +261,19 @@ final selectionProvider =
 final isSelectingProvider = Provider<bool>((ref) {
   return ref.watch(selectionProvider).isNotEmpty;
 });
+
+/// Throws away every answer this device is holding from the server, so the next
+/// read asks again.
+///
+/// The listing providers call keepAlive, which is what makes a folder reopen
+/// instantly. The cost is that they also survive signing out and switching
+/// servers, which is how the previous server's files stayed on screen. They all
+/// hang off filesDbProvider, so invalidating that one drops the lot.
+///
+/// Call this on resume, when a tab is opened, and on sign out. It costs one
+/// request per visible list and it is the difference between a view that is
+/// current and one that quietly is not.
+void refreshServerData(Ref ref) => ref.invalidate(filesDbProvider);
+
+/// The same thing from a widget, which holds a WidgetRef rather than a Ref.
+void refreshServerDataFrom(WidgetRef ref) => ref.invalidate(filesDbProvider);

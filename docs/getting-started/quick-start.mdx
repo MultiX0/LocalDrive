@@ -30,7 +30,11 @@ With no arguments it runs setup. It asks:
 2. **How to run.** Directly on the machine by default, which is lighter. Docker if you want drive management or network discovery. HTTPS works either way.
 3. **Which port.** The default is 7443. See [Ports and addresses](./ports-and-addresses).
 4. **Whether you have a domain.** Most people do not, and do not need one.
-5. **An admin username and password.**
+5. **An admin username and password**, under Docker only. Running directly the
+   server is not up yet for the account to be created against, so the first
+   person to sign up becomes the admin instead. The server refuses to create a
+   second one that way.
+6. **Whether to run it in the background** and start it again after a reboot.
 
 Then it generates every secret, writes its own configuration, starts the
 server, and prints the addresses to open along with a QR code to scan from a

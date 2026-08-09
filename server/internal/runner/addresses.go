@@ -38,10 +38,10 @@ func TLSKindFor(domain, tlsMode string, docker bool) TLSKind {
 
 // ServerAddresses is every address that actually answers, most useful first.
 //
-// With a certificate in play the machine's own ip addresses are deliberately
-// left out. They still accept a connection, but the certificate is for the
-// domain, so every one of them fails the name check and warns. Printing them
-// beside working addresses reads as an endorsement they have not earned.
+// The machine's own ip addresses are left out once there is a certificate.
+// They still accept a connection, but the certificate covers the domain, so
+// hitting an ip warns about the name. Do not list those next to ones that
+// work.
 func ServerAddresses(domain string, port int, kind TLSKind) []string {
 	domain = strings.TrimSpace(domain)
 

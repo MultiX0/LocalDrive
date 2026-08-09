@@ -22,6 +22,8 @@ localdrive help
 
     setup          set up and start a server on this machine
     init           write a working configuration without asking anything
+    install-path   make localdrive a command you can type anywhere
+    service        run in the background and start again after a reboot
     serve          run the server in the foreground, with no Docker
     start          start an already configured server
     stop           stop a running server
@@ -115,6 +117,19 @@ already, so it works either way.
 It installs a symlink rather than a copy, so `localdrive update` keeps the
 command pointing at the binary it just replaced. Running it twice is safe.
 
+### `service`
+
+Runs the server in the background and starts it again after a reboot.
+
+```
+localdrive service
+```
+
+Registers it with systemd, launchd or Task Scheduler, whichever the machine
+uses, then starts it and confirms it stayed up rather than assuming it did.
+Setup offers this already. See
+[Keeping it running](/self-hosting/running-always).
+
 ## Running
 
 ### `serve`
@@ -154,13 +169,22 @@ the directory holding the binary, so dropping `ffmpeg.exe` next to
 
 ### `start`, `stop`, `restart`
 
-For an install running under Docker Compose. `start` brings the containers up,
-`stop` takes them down, `restart` does both.
+These work the same whichever way the server runs, so nobody has to remember
+which kind of install they made.
+
+Under Docker they act on the containers. With a service registered by
+[`service`](#service) they act on the service, so `stop` really stops it rather
+than letting the service manager start it straight back up. With neither, the
+server runs in the terminal window and `start` runs it there.
+
+`restart` is also what picks up a new binary after `update`, and a changed
+setting in `.env`.
 
 ### `logs`
 
-Follows the log. Under Docker this is `docker compose logs -f`; the command
-exists so you do not have to remember which.
+Follows the log. Under Docker that is `docker compose logs -f`; with a service
+registered it is `journalctl -u localdrive -f` on Linux. The command exists so
+you do not have to remember which.
 
 ## Checking on it
 
@@ -267,6 +291,11 @@ localdrive update
 Backs up, downloads, verifies the download against the published `SHA256SUMS`,
 swaps the binary, restarts, and confirms the new version answers. If it does
 not, it rolls back on its own.
+
+Nothing has to be stopped first. The swap is a rename, which Linux allows even
+while the old binary is the running process, and the restart goes through
+whatever is holding the server: Docker, the service, or neither. A server
+running as a service comes back on the new version by itself.
 
 | Flag | What it does |
 | --- | --- |

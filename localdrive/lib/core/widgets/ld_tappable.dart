@@ -10,6 +10,7 @@ class LdTappable extends StatefulWidget {
     required this.child,
     this.onTap,
     this.onLongPress,
+    this.onLongPressAt,
     this.onSecondaryTap,
     this.borderRadius,
     this.pressedOpacity = 0.6,
@@ -22,6 +23,10 @@ class LdTappable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+
+  /// Long press, with where it happened. Use this rather than [onLongPress]
+  /// when the press opens a menu that has to be anchored.
+  final ValueChanged<Offset>? onLongPressAt;
 
   /// Right click on desktop, which is where the context menu opens.
   ///
@@ -48,6 +53,7 @@ class _LdTappableState extends State<LdTappable> {
       widget.enabled &&
       (widget.onTap != null ||
           widget.onLongPress != null ||
+          widget.onLongPressAt != null ||
           widget.onSecondaryTap != null);
 
   void _setPressed(bool value) {
@@ -68,6 +74,11 @@ class _LdTappableState extends State<LdTappable> {
       behavior: widget.behavior,
       onTap: widget.enabled ? widget.onTap : null,
       onLongPress: widget.enabled ? widget.onLongPress : null,
+      // a long press is the touch equivalent of a right click, and a menu has
+      // to know where it was opened from to point at the thing it acts on
+      onLongPressStart: widget.enabled && widget.onLongPressAt != null
+          ? (details) => widget.onLongPressAt!(details.globalPosition)
+          : null,
       onSecondaryTapUp: widget.enabled && widget.onSecondaryTap != null
           ? (details) => widget.onSecondaryTap!(details.globalPosition)
           : null,

@@ -3,6 +3,7 @@ import '../../../files/models/node_model.dart';
 import '../../../files/widgets/shared/node_actions.dart';
 import '../../../share/widgets/share_sheet.dart';
 import '../../providers/gallery_providers.dart';
+import '../../open_gallery_node.dart';
 import '../../widgets/gallery_grid.dart';
 import '../../widgets/gallery_sort_sheet.dart';
 
@@ -116,7 +117,7 @@ class GalleryPageMobile extends HookConsumerWidget {
                 sections: sections,
                 columns: columns.value,
                 selection: selection.value,
-                onOpen: (node) => context.push(Routes.photo(node.id)),
+                onOpen: (node) => openGalleryNode(context, node),
                 onToggleSelect: toggle,
               ),
             );

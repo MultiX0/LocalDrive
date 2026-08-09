@@ -194,6 +194,7 @@
   "sortSize": "الحجم",
   "viewGrid": "شبكة",
   "viewList": "قائمة",
+  "actionSelect": "تحديد",
   "selectedCount": "{count} محدد",
   "@selectedCount": { "placeholders": { "count": { "type": "int" } } },
   "itemCount": "{count, plural, =0{فارغ} =1{عنصر واحد} =2{عنصران} few{{count} عناصر} other{{count} عنصرًا}}",

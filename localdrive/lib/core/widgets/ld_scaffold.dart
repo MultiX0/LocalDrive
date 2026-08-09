@@ -45,7 +45,11 @@ class LdScaffold extends StatelessWidget {
       backgroundColor: LdColors.backgroundPrimary,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        bottom: false,
+        // a bottom bar is laid out below the body and handles the gesture bar
+        // itself, so insetting the body too would leave a gap above it. With no
+        // bottom bar nothing else is holding that space and the last row of
+        // content ends up under the gesture bar.
+        bottom: bottomBar == null,
         child: Column(
           children: <Widget>[
             if (hasHeader)

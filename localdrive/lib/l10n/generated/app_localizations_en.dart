@@ -574,6 +574,9 @@ class L10nEn extends L10n {
   String get viewList => 'List';
 
   @override
+  String get actionSelect => 'Select';
+
+  @override
   String selectedCount(int count) {
     return '$count selected';
   }

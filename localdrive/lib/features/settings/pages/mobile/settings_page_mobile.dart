@@ -25,11 +25,6 @@ class SettingsPageMobile extends ConsumerWidget {
           onBack:
               section == null ? null : () => context.go(Routes.settings),
         ),
-        if (section == null)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.pagePadding),
-            child: const AccountCard(),
-          ),
         Expanded(child: body),
       ],
     );
@@ -62,6 +57,10 @@ class _Overview extends ConsumerWidget {
         120,
       ),
       children: <Widget>[
+        // scrolls with everything else. Pinned above the list it ate a chunk of
+        // a phone screen that the rest of the page needed.
+        const AccountCard(),
+        const SizedBox(height: 20),
         LdSettingGroup(
           title: l10n.settingsAccount,
           children: <Widget>[

@@ -148,33 +148,42 @@ func doSetup(args []string) error {
 	}
 
 	// 5. the admin account
-	setupStep("Create the admin account")
-	fmt.Println("    This is the account you sign in with. You can skip it and use a")
-	fmt.Println("    temporary login instead, which has to be changed before anything")
-	fmt.Println("    else works.")
-	fmt.Println()
-
-	username := setupAsk(in, "Admin username", "admin")
+	//
+	// Only worth asking when this tool can actually create it, which means
+	// Docker, because there the server is up by the end of setup and can be
+	// called. Running directly it is not, so asking here collected a password,
+	// checked it twice, and threw it away.
+	username := "admin"
 	password := ""
-	skipAccount := false
-	for {
-		password = setupAskSecret("Admin password (leave empty to skip)")
-		if password == "" {
-			if setupConfirm(in, "Skip and use a temporary login") {
-				skipAccount = true
-				break
+	skipAccount := true
+	if useDocker {
+		setupStep("Create the admin account")
+		fmt.Println("    This is the account you sign in with. You can skip it and use a")
+		fmt.Println("    temporary login instead, which has to be changed before anything")
+		fmt.Println("    else works.")
+		fmt.Println()
+
+		username = setupAsk(in, "Admin username", "admin")
+		skipAccount = false
+		for {
+			password = setupAskSecret("Admin password (leave empty to skip)")
+			if password == "" {
+				if setupConfirm(in, "Skip and use a temporary login") {
+					skipAccount = true
+					break
+				}
+				continue
 			}
-			continue
+			if err := auth.ValidatePassword(password); err != nil {
+				fmt.Println("    " + err.Error())
+				continue
+			}
+			if setupAskSecret("Type it once more") != password {
+				fmt.Println("    Those did not match.")
+				continue
+			}
+			break
 		}
-		if err := auth.ValidatePassword(password); err != nil {
-			fmt.Println("    " + err.Error())
-			continue
-		}
-		if setupAskSecret("Type it once more") != password {
-			fmt.Println("    Those did not match.")
-			continue
-		}
-		break
 	}
 	serverName := setupAsk(in, "What should this server be called", "Local Drive")
 
@@ -293,13 +302,33 @@ func doSetup(args []string) error {
 		setupOk("Skipped. Run it as " + cli + " from this directory.")
 	}
 
+	// 7c. keep it running. A server that stops when the terminal closes is not
+	// one, and on a machine reached over ssh that is the moment you disconnect.
+	startedAsService := false
 	if !useDocker {
+		setupStep("Keeping it running")
+		fmt.Println("    It can run in the background and come back after a reboot,")
+		fmt.Println("    or you can start it by hand in a terminal each time.")
 		fmt.Println()
-		fmt.Println("  Start it whenever you like with:")
-		fmt.Println()
-		fmt.Println("      " + cli + " start")
-		fmt.Println()
+		if setupConfirm(in, "Run it in the background and start it at boot") {
+			status, err := InstallService(install)
+			if err != nil {
+				setupOk("Could not set that up: " + err.Error())
+				setupOk("Start it by hand with " + cli + " start")
+			} else {
+				PrintServiceResult(status)
+				startedAsService = status.Running
+			}
+		} else {
+			fmt.Println()
+			fmt.Println("  Start it whenever you like with:")
+			fmt.Println()
+			fmt.Println("      " + cli + " start")
+			fmt.Println()
+			fmt.Println("  Or later, to run it in the background: " + cli + " service")
+		}
 	}
+	_ = startedAsService
 
 	// 8. create the real account now, so it exists before anyone opens the app
 	if !skipAccount && useDocker {
@@ -308,11 +337,16 @@ func doSetup(args []string) error {
 			return err
 		}
 		setupOk("Signed up as " + username)
-	} else if skipAccount {
+	} else if useDocker {
 		fmt.Println()
 		fmt.Println("  The temporary login is admin / admin12345.")
 		fmt.Println("  Change it the first time you open the app. Nothing else works")
 		fmt.Println("  until you do.")
+	} else {
+		setupStep("Your account")
+		setupOk("The first person to sign up becomes the admin, so open the")
+		setupOk("server once it is running and make yours. After that the")
+		setupOk("server refuses to create another one that way.")
 	}
 
 	// 9. where to go, including from a phone

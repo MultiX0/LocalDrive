@@ -333,6 +333,19 @@ class SelectionActionBar extends ConsumerWidget {
               child: LdIcon(LdGlyph.check, size: 18),
             ),
           ),
+          // the full menu for one item, which a touch screen has no other way
+          // to reach: long press starts a selection, and there is no right
+          // click. It only makes sense for a single item, since rename, share
+          // and the rest each act on one node.
+          if (chosen.length == 1)
+            LdTappable(
+              onTap: () => showNodeActions(context, ref, chosen.first, Offset.zero),
+              borderRadius: BorderRadius.circular(20),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: LdIcon(LdGlyph.more, size: 18),
+              ),
+            ),
           if (canTrash)
             LdTappable(
               onTap: () async {

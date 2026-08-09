@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -27,7 +28,10 @@ func RunStart(args []string) int {
 		return failf("no server is set up at %s. run: localdrive setup", install.Dir)
 	}
 
-	if install.HasCompose() {
+	// a compose file is written at init time whether or not Docker is ever
+	// used, so its presence says nothing about how this server actually runs.
+	// Asking Docker what it has running is the only answer that cannot be wrong.
+	if underDocker(install) {
 		if err := compose(install, "up", "-d"); err != nil {
 			return fail(err)
 		}
@@ -35,9 +39,16 @@ func RunStart(args []string) int {
 		return reportAddresses(install)
 	}
 
-	// a native install runs in the foreground, because a background service on
-	// two very different operating systems is a promise this tool should not
-	// make quietly
+	// a registered service already owns this server, so starting a second copy
+	// in this window would only fight it for the port
+	if ServiceManaged() {
+		if err := ControlService("start"); err != nil {
+			return fail(err)
+		}
+		setupOk("started")
+		return reportAddresses(install)
+	}
+
 	fmt.Println()
 	fmt.Println("  This install runs directly on this machine, with no Docker.")
 	fmt.Println("  Starting it in this window. Close the window or press Ctrl+C to stop.")
@@ -51,7 +62,14 @@ func RunStop(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
-	if !install.HasCompose() {
+	if !underDocker(install) {
+		if ServiceManaged() {
+			if err := ControlService("stop"); err != nil {
+				return fail(err)
+			}
+			setupOk("stopped")
+			return 0
+		}
 		return failf("this install runs in the foreground, so stop it in the window it is running in")
 	}
 	if err := compose(install, "down"); err != nil {
@@ -67,7 +85,16 @@ func RunRestart(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
-	if !install.HasCompose() {
+	if !underDocker(install) {
+		// a service holds the process, so restarting it is what picks up a new
+		// binary after an update or a changed setting
+		if ServiceManaged() {
+			if err := ControlService("restart"); err != nil {
+				return fail(err)
+			}
+			setupOk("restarted")
+			return 0
+		}
 		return failf("this install runs in the foreground, so restart it in the window it is running in")
 	}
 	if err := compose(install, "restart"); err != nil {
@@ -83,7 +110,15 @@ func RunLogs(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
-	if !install.HasCompose() {
+	if !underDocker(install) {
+		if ServiceManaged() && runtime.GOOS == "linux" {
+			cmd := exec.Command("journalctl", "-u", ServiceUnitName, "-f", "-n", "200")
+			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fail(err)
+			}
+			return 0
+		}
 		return failf("this install prints its log in the window it runs in")
 	}
 	cmd := exec.Command("docker", "compose", "logs", "-f", "--tail", "200")
