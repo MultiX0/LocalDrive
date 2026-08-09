@@ -20,8 +20,8 @@ import (
 // answering only on 7443 can never be issued a certificate, whatever it is
 // told, so the challenge listeners are separate from the port people use.
 const (
-	tlsPort   = 443
-	acmePort  = 80
+	tlsPort    = 443
+	acmePort   = 80
 	tlsDirName = "certs"
 )
 
