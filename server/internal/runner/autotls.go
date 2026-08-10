@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
@@ -26,6 +29,26 @@ const (
 	tlsDirName = "certs"
 )
 
+// issueTimeout bounds how long one handshake will wait for a certificate.
+//
+// Issuance normally takes a few seconds. When the challenge cannot be reached
+// it never completes at all, and an unbounded wait means every https request
+// hangs until the browser gives up: the process is running, the port is open,
+// and nothing is served. Failing the handshake instead turns an outage that
+// looks like a dead server into one error a person can act on.
+//
+// The attempt itself is left running. It writes to the same cache, so if a
+// certificate does eventually arrive the next handshake picks it up and the
+// server heals without a restart.
+var issueTimeout = 20 * time.Second
+
+// how often the same certificate failure is worth repeating in the log. Every
+// handshake retries, and a browser opens several at once, so logging each one
+// would bury the message it is trying to deliver.
+const issueLogEvery = time.Minute
+
+var errIssueTimeout = errors.New("timed out obtaining a certificate")
+
 // autoTLS is the certificate manager plus the extra listeners it needs.
 type autoTLS struct {
 	manager *autocert.Manager
@@ -33,6 +56,9 @@ type autoTLS struct {
 	// port is the configured port, the one that answers both protocols. It is
 	// where anything arriving in the clear gets pointed.
 	port int
+
+	mu         sync.Mutex
+	lastLogged time.Time
 }
 
 // wantsAutoTLS reports whether this process should get its own certificate.
@@ -90,6 +116,9 @@ func newAutoTLS(cfg *config.Config) (*autoTLS, error) {
 func (a *autoTLS) listeners(addr string, log *slog.Logger) []net.Listener {
 	tlsConfig := a.manager.TLSConfig()
 	tlsConfig.MinVersion = tls.VersionTLS12
+	// the manager's own lookup can block for as long as the authority takes to
+	// answer, which is forever when the challenge never arrives
+	tlsConfig.GetCertificate = a.certificateFor(tlsConfig.GetCertificate, log)
 
 	var out []net.Listener
 	seen := map[string]bool{}
@@ -125,6 +154,95 @@ func (a *autoTLS) listeners(addr string, log *slog.Logger) []net.Listener {
 		out = append(out, ln)
 	}
 	return out
+}
+
+// announce records what the certificate name currently resolves to.
+//
+// It states what is, and draws no conclusion from it: a home server behind a
+// router legitimately resolves to an address the machine itself never sees.
+// When issuance later fails, this line is the first thing worth reading, and
+// having it already in the log saves asking for it afterwards.
+func (a *autoTLS) announce(ctx context.Context, log *slog.Logger) {
+	go func() {
+		lookup, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		addrs, err := net.DefaultResolver.LookupHost(lookup, a.domain)
+		if err != nil {
+			log.Warn("the certificate name does not resolve, so https cannot be issued",
+				"domain", a.domain, "error", err)
+			return
+		}
+		log.Info("certificate name resolves", "domain", a.domain, "addresses", strings.Join(addrs, ", "))
+	}()
+}
+
+// certificateFor bounds the wait and explains a failure once it happens.
+//
+// inner is the manager's own lookup: a cached certificate comes back from it
+// immediately, and only a name being seen for the first time reaches the
+// authority at all.
+func (a *autoTLS) certificateFor(
+	inner func(*tls.ClientHelloInfo) (*tls.Certificate, error),
+	log *slog.Logger,
+) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		type answer struct {
+			cert *tls.Certificate
+			err  error
+		}
+		// buffered, so the attempt can finish and populate the cache even after
+		// this handshake has given up on it
+		done := make(chan answer, 1)
+		go func() {
+			cert, err := inner(hello)
+			done <- answer{cert, err}
+		}()
+
+		timer := time.NewTimer(issueTimeout)
+		defer timer.Stop()
+		select {
+		case got := <-done:
+			if got.err != nil {
+				a.reportCertificate(log, hello.ServerName, got.err)
+			}
+			return got.cert, got.err
+		case <-timer.C:
+			a.reportCertificate(log, hello.ServerName, errIssueTimeout)
+			return nil, errIssueTimeout
+		}
+	}
+}
+
+// reportCertificate says why https is not working, in terms of the thing that
+// has to change.
+//
+// A name that is not the configured domain is somebody else's traffic: a
+// scanner, or a browser offering an encrypted hello that carries a different
+// name. That is routine and not worth a warning.
+func (a *autoTLS) reportCertificate(log *slog.Logger, name string, err error) {
+	if name != "" && !sameHost(name, a.domain) {
+		log.Debug("declined a certificate for another name", "name", name)
+		return
+	}
+
+	a.mu.Lock()
+	quiet := time.Since(a.lastLogged) < issueLogEvery
+	if !quiet {
+		a.lastLogged = time.Now()
+	}
+	a.mu.Unlock()
+	if quiet {
+		return
+	}
+
+	log.Warn("could not obtain a certificate, so https is not answering",
+		"domain", a.domain,
+		"error", err,
+		"needs", fmt.Sprintf(
+			"%s must resolve to this machine, and ports %d and %d must be reachable from the internet",
+			a.domain, acmePort, tlsPort),
+		"if_behind_a_proxy", "a proxied dns record answers the challenge itself and the certificate can never be issued: "+
+			"either turn the proxy off for this name, or set LD_TLS=off and let the proxy provide https")
 }
 
 // guard decides what to do with a request that arrives in the clear on the

@@ -331,7 +331,8 @@ func (a *App) Close(ctx context.Context) error {
 	record(a.Pool.Close(ctx))
 	record(a.Hub.Close(ctx))
 	a.API.Close()
-	record(a.DB.Checkpoint(ctx))
+	// Close checkpoints on its way out, once the readers holding the log open
+	// are gone. Doing it here as well only ever found the database still busy.
 	record(a.DB.Close())
 	return firstErr
 }

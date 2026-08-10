@@ -72,9 +72,17 @@ When you fix a UI bug, the regression test is usually a widget test.
 
 ### End to end
 
-A built server and a built client, driven as a user would drive them. This is
-the layer the repository does not have yet. See
-[Where end-to-end tests go](#where-end-to-end-tests-go).
+A deployed server and a real browser, driven as a user would drive them. This
+layer runs on TestSprite and lives in `e2e/testsprite/`. See
+[TestSprite](testsprite.mdx) for how to install it, run it, and read a failure.
+
+It is the only layer that needs something outside this repository, and the only
+one that cannot run against `localhost`: the browser doing the driving is not on
+your machine. Everything below it stays local and stays the fast loop.
+
+A contributor without a TestSprite account can still run every other layer and
+send a pull request. Nothing in `server/`, `localdrive/` or the release process
+depends on it.
 
 ### Regression
 
@@ -109,17 +117,15 @@ Roughly in order. If time is short, this is the order to spend it in.
 
 ## Where end-to-end tests go
 
-There is no end-to-end suite yet. When one is added, it goes in `e2e/` at the
-repository root, outside both `server/` and `localdrive/`, because it exercises
-them together and belongs to neither.
-
-The intended shape:
+In `e2e/` at the repository root, outside both `server/` and `localdrive/`,
+because they exercise them together and belong to neither.
 
 ```
 e2e/
-  fixtures/     files and accounts a run starts from
-  scenarios/    one directory per workflow under test
-  README.md     how to start an environment and run against it
+  testsprite/
+    frontend/   one plan per user workflow, in plain language
+    backend/    one Python file per API contract, asserted over HTTP
+    README.md   what each file covers, and what is still missing
 ```
 
 Two properties matter more than the choice of tool:

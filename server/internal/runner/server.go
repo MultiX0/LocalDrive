@@ -101,6 +101,7 @@ func runServer(args []string) error {
 			}
 		}()
 	} else {
+		auto.announce(ctx, log)
 		listeners := auto.listeners(cfg.Addr, log)
 		if len(listeners) == 0 {
 			return fmt.Errorf("a domain is set but no https port could be opened; "+

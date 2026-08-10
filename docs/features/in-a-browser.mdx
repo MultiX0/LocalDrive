@@ -1,0 +1,88 @@
+---
+title: In a browser
+description: The web client, what it can do that the apps cannot, and the three things it cannot do.
+sidebar_position: 9
+---
+
+# In a browser
+
+Local Drive has a web client. It reaches the same server as the apps, over the
+same API, and holds nothing of its own. Point a browser at it, give it the
+address of your server, and sign in.
+
+It exists for the cases where installing something is the wrong answer: a
+borrowed laptop, a locked down work machine, a phone that is not yours, or
+simply wanting to check one file without putting an app on the device.
+
+## What it is
+
+A separate client, not the Flutter app compiled for the web. It is a Next.js
+application in `web-client/`, and it is a full port: the same screens, the same
+two languages, the same design, the same behaviour.
+
+The server does not know or care which client is talking to it. Anything you do
+in a browser shows up in the apps, and the other way round, because both are
+views onto one server.
+
+## What works
+
+Everything the apps do, with three exceptions listed below.
+
+- Signing in, including the second factor and waiting for device approval.
+- Browsing, searching, opening folders, and the trash.
+- Uploading, including several files at once, with progress.
+- Downloading, previews for images, video, audio, PDF, text, code and
+  markdown, and the gallery grouped by month.
+- Sharing, both a link anyone can open and giving access to somebody who has an
+  account on the server.
+- Renaming, starring, moving to the trash, restoring, and version history.
+- Keeping a file for offline use.
+- Every settings screen: account, devices, language, two factor, downloads,
+  and, for an admin, people and server settings.
+- On a desktop: rubber band selection, shift and control clicking, dragging
+  files onto a folder, dragging files in from the desktop, and the keyboard.
+
+## What it cannot do
+
+Three things, and all three are the browser's limits rather than decisions.
+
+**Uploads are held in memory.** A browser cannot write to a scratch file, so an
+upload interrupted by closing the tab starts again. The apps resume after a
+restart. For anything large, use an app.
+
+**Nearby sharing does not work.** It needs to see the local network, which a
+page cannot do.
+
+**Offline is a convenience, not a copy.** Files marked for offline are kept in
+the browser's cache storage. They survive a reload and a closed tab, and they
+open with the server switched off, but a browser may evict them under storage
+pressure. Anything that must survive belongs on the server.
+
+## Where the files go
+
+Nowhere. The client holds no data. Everything is on your server, and clearing
+the browser's storage signs you out and removes the offline copies, nothing
+more.
+
+## Running it yourself
+
+The web client is a static site. Build it and host it anywhere, including on
+the same machine as the server:
+
+```
+cd web-client
+npm install
+npm run build
+npm start
+```
+
+It asks for a server address on first run, so one build works for any server.
+
+Two things to know about hosting it elsewhere:
+
+- **The server answers any origin by default,** so a client hosted on another
+  domain works with no configuration. Setting `CORS_ALLOWED_ORIGINS` narrows
+  that to a list you choose.
+- **A page served over HTTPS cannot talk to a server over plain HTTP.** That is
+  a browser rule rather than one of ours. If the client is on HTTPS, give the
+  server a domain so it has HTTPS too. See [HTTPS](../self-hosting/https).

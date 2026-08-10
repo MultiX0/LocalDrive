@@ -162,6 +162,48 @@ let the proxy hold the certificate. Docker installs do this already: the
 compose file pins `LD_TLS=off`, because Caddy owns the certificate there and
 two clients asking for the same name would race each other and both fail.
 
+## When a certificate cannot be issued
+
+To get a certificate, the authority has to reach **this** server. It looks up
+your domain and connects to whatever answers. If that is not your machine, the
+check fails, and it will keep failing however many times you restart.
+
+The usual cause is a DNS record pointing somewhere else. A proxied record, the
+orange cloud in Cloudflare, resolves to the proxy rather than to you, so the
+challenge lands there and never arrives.
+
+The server tells you rather than sitting silent. A request that needs a
+certificate waits up to twenty seconds and then fails, and the log says what has
+to change:
+
+```
+could not obtain a certificate, so https is not answering
+  domain=drive.example.com
+  needs=drive.example.com must resolve to this machine, and ports 80 and 443
+        must be reachable from the internet
+```
+
+It keeps trying in the background, so once the cause is fixed the next request
+succeeds without a restart.
+
+Two ways out, and both are fine:
+
+- **Let this server hold the certificate.** Point the record straight at your
+  address, grey cloud rather than orange, and make sure ports 80 and 443 reach
+  you.
+- **Let the proxy hold it.** Set `LD_TLS=off` and let Cloudflare, Caddy or
+  whatever sits in front terminate HTTPS. The server then serves plain HTTP to
+  the proxy only, and the proxy must be pointed at the port it is actually
+  listening on.
+
+Check what your name resolves to before assuming anything else:
+
+```
+dig +short drive.example.com
+```
+
+If that is not your server's address, nothing else in this page will work yet.
+
 ## Reaching it from outside your network
 
 Opening a port to the internet is the part worth slowing down on, and it is

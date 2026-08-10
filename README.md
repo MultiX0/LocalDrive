@@ -241,6 +241,7 @@ These are screenshots of the running app, not mockups.
 | [`localdrive/`](localdrive/) | The Flutter app. One codebase, every platform. |
 | [`docs/`](docs/) | The full documentation, rendered by the site. |
 | [`landing/`](landing/) | The website, which reads `docs/` directly. |
+| [`e2e/`](e2e/) | End-to-end tests, run on TestSprite against a deployment. |
 
 ```
 cd server     && go test ./... && go vet ./...
@@ -251,11 +252,55 @@ cd landing    && npm run build
 Start with [Architecture overview](docs/architecture/overview.mdx) and
 [Development setup](docs/contributing/development-setup.mdx).
 
+Those three commands are the whole local loop and need no account anywhere.
+
+---
+
+## Testing with TestSprite
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testsprite-mark-dark.svg">
+    <img src="docs/assets/testsprite-mark-light.svg" width="34" align="left" hspace="12" vspace="4" alt="TestSprite">
+  </picture>
+  Local Drive is tested with <a href="https://www.testsprite.com/">TestSprite</a>,
+  the recommended workflow for the layer above unit and integration tests: a real
+  browser driven against a running server, checking the workflows a person
+  actually performs.
+</p>
+
+<br clear="left">
+
+Unit tests prove the pieces. They cannot tell you that a screen sits empty
+because the client is calling a route the server does not serve, because from
+inside the code nothing is wrong. That is the gap this layer covers, and it
+found exactly that bug in this repository.
+
+```
+npm install -g @testsprite/testsprite-cli
+testsprite setup
+testsprite test run --all --project "$TESTSPRITE_PROJECT_ID" --wait
+```
+
+The suite is in [`e2e/testsprite/`](e2e/testsprite/): ten workflows written as
+sentences, and five checks on the API contract.
+
+**Recommended, never required.** TestSprite is a development dependency. The
+server does not call it, CI does not run it, and no key is needed to clone,
+build, test or send a pull request. The three commands above this section remain
+the whole contribution loop.
+
+[Testing with TestSprite](docs/contributing/testsprite.mdx) has the rest,
+including authentication, reading a failure, the AI agent workflow, and why the
+CLI cannot point at `localhost`. TestSprite's own documentation is at
+[docs.testsprite.com](https://docs.testsprite.com/).
+
 | | |
 | --- | --- |
 | [Vision](VISION.md) | Why the project exists, what it refuses to become, and how to judge whether a change belongs. |
 | [Contributing](CONTRIBUTING.md) | How to get it running and what makes a change easy to accept. |
 | [Testing](docs/contributing/testing.mdx) | The layers, what belongs in each, and what must not break. |
+| [TestSprite](docs/contributing/testsprite.mdx) | The end-to-end layer: installing the CLI, running the suite, and reading a failure. |
 | [Security review](docs/contributing/security-review.mdx) | What to check before merging, and the concerns currently open. |
 | [Code of conduct](CODE_OF_CONDUCT.md) | Be decent to people. |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately, and what is in scope. |

@@ -164,7 +164,15 @@ func (i Install) ReadEnv() map[string]string {
 			continue
 		}
 		if key, value, found := strings.Cut(line, "="); found {
-			out[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
+			key = strings.TrimSpace(key)
+			// first wins, because that is what the server does when it loads
+			// the same file. Appending a line with `>>` is the obvious way to
+			// change a setting and it leaves two, so the two readers disagreeing
+			// means status reports a value the server is not using.
+			if _, already := out[key]; already {
+				continue
+			}
+			out[key] = strings.Trim(strings.TrimSpace(value), `"'`)
 		}
 	}
 	return out

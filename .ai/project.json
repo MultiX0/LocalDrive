@@ -8,7 +8,6 @@
   "website": "https://localdrive.iprog.dev",
   "license": "MIT",
   "vendorNeutral": true,
-
   "components": [
     {
       "id": "server",
@@ -62,13 +61,30 @@
       "routing": "go_router",
       "localDatabase": "drift",
       "httpClient": "dio",
-      "sourcePlatforms": ["android", "windows", "linux", "macos", "ios", "web"],
-      "releasedPlatforms": ["android", "windows", "linux"],
-      "locales": ["en", "ar"],
+      "sourcePlatforms": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web"
+      ],
+      "releasedPlatforms": [
+        "android",
+        "windows",
+        "linux"
+      ],
+      "locales": [
+        "en",
+        "ar"
+      ],
       "rtl": true,
       "generatedCode": {
         "gitignored": true,
-        "patterns": ["*.g.dart", "*.freezed.dart"],
+        "patterns": [
+          "*.g.dart",
+          "*.freezed.dart"
+        ],
         "command": "dart run build_runner build --delete-conflicting-outputs",
         "note": "a clean checkout does not compile until this has been run"
       },
@@ -85,7 +101,10 @@
       "path": "docs",
       "role": "The single source for all documentation. Rendered by the website.",
       "format": "CommonMark with frontmatter, parsed as markdown not MDX",
-      "frontmatterRequired": ["title", "description"],
+      "frontmatterRequired": [
+        "title",
+        "description"
+      ],
       "linkStyle": "internal links carry no file extension",
       "validation": "cd landing && npm run build"
     },
@@ -104,28 +123,93 @@
       "note": "npm run build is the repository's only internal link checker"
     }
   ],
-
   "checks": {
     "$comment": "Everything CI runs, plus the client and site checks CI does not yet run. Run all of them before claiming a change is finished.",
     "all": [
-      { "component": "server", "cwd": "server", "run": "gofmt -l ." , "expect": "no output" },
-      { "component": "server", "cwd": "server", "run": "go vet ./..." },
-      { "component": "server", "cwd": "server", "run": "go test -race -count=1 ./..." },
-      { "component": "client", "cwd": "localdrive", "run": "flutter analyze" },
-      { "component": "client", "cwd": "localdrive", "run": "flutter test" },
-      { "component": "landing", "cwd": "landing", "run": "npm run build" }
+      {
+        "component": "server",
+        "cwd": "server",
+        "run": "gofmt -l .",
+        "expect": "no output"
+      },
+      {
+        "component": "server",
+        "cwd": "server",
+        "run": "go vet ./..."
+      },
+      {
+        "component": "server",
+        "cwd": "server",
+        "run": "go test -race -count=1 ./..."
+      },
+      {
+        "component": "client",
+        "cwd": "localdrive",
+        "run": "flutter analyze"
+      },
+      {
+        "component": "client",
+        "cwd": "localdrive",
+        "run": "flutter test"
+      },
+      {
+        "component": "landing",
+        "cwd": "landing",
+        "run": "npm run build"
+      }
     ]
   },
-
   "publicContracts": [
-    { "name": "HTTP API", "documentedAt": "docs/api-reference", "consumers": ["localdrive", "share links", "third party clients"] },
-    { "name": "CLI surface and output", "documentedAt": "docs/self-hosting/cli.mdx", "consumers": ["operators", "service units", "scripts"] },
-    { "name": "Database schema", "documentedAt": "server/migrations", "consumers": ["existing installs"] },
-    { "name": "On disk layout", "documentedAt": "docs/self-hosting/where-your-data-lives.mdx", "consumers": ["existing installs", "backups"] },
-    { "name": "Configuration keys", "documentedAt": "docs/self-hosting/environment-variables.mdx", "consumers": ["existing installs", "docker-compose.yml"] },
-    { "name": "Release asset filenames", "documentedAt": "docs/contributing/releasing.mdx", "consumers": ["the website download page", "localdrive update"] }
+    {
+      "name": "HTTP API",
+      "documentedAt": "docs/api-reference",
+      "consumers": [
+        "localdrive",
+        "share links",
+        "third party clients"
+      ]
+    },
+    {
+      "name": "CLI surface and output",
+      "documentedAt": "docs/self-hosting/cli.mdx",
+      "consumers": [
+        "operators",
+        "service units",
+        "scripts"
+      ]
+    },
+    {
+      "name": "Database schema",
+      "documentedAt": "server/migrations",
+      "consumers": [
+        "existing installs"
+      ]
+    },
+    {
+      "name": "On disk layout",
+      "documentedAt": "docs/self-hosting/where-your-data-lives.mdx",
+      "consumers": [
+        "existing installs",
+        "backups"
+      ]
+    },
+    {
+      "name": "Configuration keys",
+      "documentedAt": "docs/self-hosting/environment-variables.mdx",
+      "consumers": [
+        "existing installs",
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "name": "Release asset filenames",
+      "documentedAt": "docs/contributing/releasing.mdx",
+      "consumers": [
+        "the website download page",
+        "localdrive update"
+      ]
+    }
   ],
-
   "guidance": {
     "root": "AGENTS.md",
     "vision": "VISION.md",
@@ -138,12 +222,49 @@
     "skills": ".ai/skills",
     "contributing": "CONTRIBUTING.md",
     "security": "SECURITY.md",
-    "testing": "docs/contributing/testing.mdx"
+    "testing": "docs/contributing/testing.mdx",
+    "testsprite": "docs/contributing/testsprite.mdx"
   },
-
   "release": {
     "trigger": "push a bare version tag, for example 0.0.1",
     "workflow": ".github/workflows/release.yml",
     "warning": "asset filenames are load bearing, the website and the updater look for exact names"
+  },
+  "endToEnd": {
+    "$comment": "The end-to-end layer. Not part of `checks`: it needs an account, credits and a publicly reachable deployment, so it is run deliberately rather than on every change. Nothing in the product depends on it, and the repository is complete without it.",
+    "tool": "testsprite",
+    "vendor": "TestSprite",
+    "runtimeDependency": false,
+    "package": "@testsprite/testsprite-cli",
+    "install": "npm install -g @testsprite/testsprite-cli",
+    "setup": "testsprite setup",
+    "nodeVersions": ">=20.19 <21 || >=22.13 <23 || >=24",
+    "suite": "e2e/testsprite",
+    "frontendPlans": "e2e/testsprite/frontend",
+    "backendTests": "e2e/testsprite/backend",
+    "docs": "docs/contributing/testsprite.mdx",
+    "skill": ".ai/skills/verify-with-testsprite.md",
+    "constraints": [
+      "the target must be publicly reachable; the CLI rejects localhost and private ranges",
+      "the API key is never committed; the CLI reads it from ~/.testsprite/credentials or TESTSPRITE_API_KEY",
+      "generated artifacts under .testsprite/ are ignored, they contain screenshots and DOM snapshots",
+      "never point the suite at a server holding real files"
+    ],
+    "commands": {
+      "lintPlans": "npx @testsprite/testsprite-cli test lint --plan-from-dir ./e2e/testsprite/frontend",
+      "runAll": "testsprite test run --all --project \"$TESTSPRITE_PROJECT_ID\" --wait --output json",
+      "rerun": "testsprite test rerun <test-id> --wait",
+      "failureBundle": "testsprite test failure get <test-id> --out ./.testsprite/failure --failed-only"
+    },
+    "exitCodes": {
+      "0": "passed",
+      "1": "failed, blocked or cancelled",
+      "3": "auth",
+      "5": "validation",
+      "7": "timeout, inconclusive rather than a regression",
+      "11": "rate limited",
+      "12": "out of credits",
+      "14": "client too old"
+    }
   }
 }

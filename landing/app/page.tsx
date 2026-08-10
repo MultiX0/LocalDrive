@@ -5,6 +5,7 @@ import { Mark } from "@/components/brand/Mark";
 import { DesktopFrame, PhoneFrame } from "@/components/showcase/AppFrame";
 
 import { ShareDemo, TransfersDemo } from "@/components/showcase/TransfersDemo";
+import { VerificationLoop } from "@/components/showcase/VerificationLoop";
 import { GitHubIcon } from "@/components/ui/GitHubIcon";
 import { PlatformRow } from "@/components/ui/PlatformIcons";
 import { TerminalTabs } from "@/components/ui/TerminalTabs";
@@ -23,6 +24,7 @@ export default function Home() {
       <NotDoing />
       <Roadmap />
       <Ownership />
+      <Verification />
       <ClosingCta />
     </>
   );
@@ -112,9 +114,31 @@ function Hero() {
               </div>
             ))}
           </dl>
-
-          <p className="mt-6 text-[13px] text-fg-muted">
-            MIT licensed. No account, no subscription, no telemetry.
+            <br />
+          {/*
+            One line, under the licence note rather than above the headline: it
+            says how the thing is checked, which belongs after what the thing is.
+            The mark is decorative because the sentence already names TestSprite.
+          */}
+          <p className="mt-3 flex items-center gap-2 text-[13px] text-fg-secondary">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/testsprite/mark.svg"
+              alt=""
+              aria-hidden
+              width={15}
+              height={15}
+              className="shrink-0 opacity-90"
+            />
+            Tested with{" "}
+            <a
+              href="https://www.testsprite.com/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-semibold text-accent transition-colors duration-fast hover:text-fg"
+            >
+              TestSprite
+            </a>
           </p>
         </div>
 
@@ -851,6 +875,230 @@ function NotDoing() {
 }
 
 /* ------------------------------------------------------------ ownership */
+
+/* -------------------------------------------------------- verification */
+
+/*
+  The collaboration section.
+
+  Structured the way TestSprite structures their own explanation, because it is
+  the clearest description of what the tool does: three properties, then four
+  steps, then the loop. The content is entirely Local Drive's own, and every
+  number and command in it is real. Their marketing figures are theirs and are
+  not repeated here as though they were ours.
+*/
+
+function Verification() {
+  const pillars = [
+    {
+      title: "It uses the app, it does not read it",
+      body: "A real browser signs in, uploads a file and opens the share sheet against a running server. Nothing is mocked, so a screen that renders before its data arrives fails here and nowhere else.",
+    },
+    {
+      title: "A failure arrives explained",
+      body: "The failing step, the DOM around it, the test source and a root cause hypothesis come back as one bundle. There is nothing to reconstruct from scattered logs.",
+    },
+    {
+      title: "Coverage compounds",
+      body: "A test written to chase one bug stays in the suite afterwards. Fifteen of them now cover signing in, uploads, sharing and the API contract.",
+    },
+  ];
+
+  const steps = [
+    {
+      n: "01",
+      title: "Install and connect",
+      body: (
+        <>
+          One global install and a key from the dashboard. Or the MCP server, in
+          Claude Code, Cursor or Codex.
+        </>
+      ),
+      code: "npm i -g @testsprite/testsprite-cli",
+    },
+    {
+      n: "02",
+      title: "Point it at a deployment",
+      body: (
+        <>
+          Two projects, because Local Drive is two things: the web client and the
+          Go API. It explores the running product rather than the source.
+        </>
+      ),
+      code: "testsprite project create --type frontend",
+    },
+    {
+      n: "03",
+      title: "Run the workflows",
+      body: (
+        <>
+          Ten plans written as sentences, five checks on the API contract. Kept in{" "}
+          <code className="text-fg">e2e/testsprite/</code> and reviewed like any
+          other code.
+        </>
+      ),
+      code: "testsprite test run --all --wait",
+    },
+    {
+      n: "04",
+      title: "Fix, rerun, keep",
+      body: (
+        <>
+          Read the bundle, fix the application rather than the test, replay it.
+          The passing test stays.
+        </>
+      ),
+      code: "testsprite test rerun <id> --wait",
+    },
+  ];
+
+  return (
+    <section className="border-b border-stroke">
+      <div className="mx-auto max-w-6xl px-5 py-20 sm:px-7 lg:px-8">
+        <div className="max-w-2xl">
+          <SectionLabel>Verification</SectionLabel>
+          <h2 className="mt-4 text-[30px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[38px]">
+            Unit tests prove the pieces.
+            <br />
+            <span className="text-fg-secondary">
+              Something has to prove the product.
+            </span>
+          </h2>
+          <p className="mt-5 text-[15px] leading-[24px] text-fg-secondary">
+            A screen can sit empty because the client calls a route the server
+            does not serve, and from inside the code nothing is wrong: the types
+            line up, the tests pass, the error is caught. Local Drive is tested
+            end to end with{" "}
+            <a
+              href="https://www.testsprite.com/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-fg underline decoration-stroke underline-offset-4 transition-colors hover:decoration-fg-secondary"
+            >
+              TestSprite
+            </a>
+            , which drives a real browser against a deployed server and found
+            exactly that bug in this repository.
+          </p>
+        </div>
+
+        {/* three properties, the reason this layer is not just another runner */}
+        <div className="mt-12 grid gap-px overflow-hidden rounded-card border border-stroke bg-stroke sm:grid-cols-3">
+          {pillars.map((item) => (
+            <div key={item.title} className="bg-base p-6">
+              <h3 className="text-[15px] font-semibold leading-[22px]">
+                {item.title}
+              </h3>
+              <p className="mt-2.5 text-[13.5px] leading-[21px] text-fg-secondary">
+                {item.body}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* four steps, in their numbering */}
+        <div className="mt-6 grid gap-px overflow-hidden rounded-card border border-stroke bg-stroke sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step) => (
+            <div key={step.n} className="flex flex-col bg-base p-6">
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[1px] text-accent">
+                Step // {step.n}
+              </span>
+              <h3 className="mt-3 text-[15px] font-semibold leading-[22px]">
+                {step.title}
+              </h3>
+              <p className="mt-2 flex-1 text-[13.5px] leading-[21px] text-fg-secondary">
+                {step.body}
+              </p>
+              <code className="mt-4 block overflow-x-auto rounded-chip border border-stroke bg-sunken px-3 py-2 font-mono text-[11.5px] leading-[18px] text-fg-secondary">
+                {step.code}
+              </code>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-14">
+          <h3 className="text-[19px] font-semibold tracking-[-0.01em]">
+            The loop, as it actually ran here
+          </h3>
+          <p className="mt-2 max-w-2xl text-[14px] leading-[22px] text-fg-secondary">
+            Six stages from one change to this repository. Every command and every
+            line of output below is real.
+          </p>
+          <div className="mt-7">
+            <VerificationLoop />
+          </div>
+        </div>
+
+        {/* one engine, the surfaces this project actually uses */}
+        <div className="mt-14 grid gap-px overflow-hidden rounded-card border border-stroke bg-stroke sm:grid-cols-3">
+          {[
+            {
+              label: "CLI",
+              for: "For agents and for people",
+              body: "The primary interface, and what the committed suite runs on. Machine readable output and exit codes that mean something.",
+            },
+            {
+              label: "MCP",
+              for: "In the editor",
+              body: "The one interface that reaches an app running only on your machine, which for a self hosted project is most of the time.",
+            },
+            {
+              label: "Web portal",
+              for: "The account",
+              body: "Keys, project credentials and the dashboard a run links back to.",
+            },
+          ].map((surface) => (
+            <div key={surface.label} className="bg-base p-6">
+              <div className="flex items-baseline gap-2.5">
+                <span className="text-[15px] font-semibold">{surface.label}</span>
+                <span className="text-[12px] text-fg-muted">{surface.for}</span>
+              </div>
+              <p className="mt-2.5 text-[13.5px] leading-[21px] text-fg-secondary">
+                {surface.body}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col gap-5 border-t border-stroke pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/testsprite/mark.svg"
+              alt=""
+              aria-hidden
+              width={30}
+              height={30}
+              className="shrink-0"
+            />
+            <p className="max-w-xl text-[13.5px] leading-[20px] text-fg-secondary">
+              Local Drive is tested with{" "}
+              <span className="text-fg">TestSprite</span>. Recommended, never
+              required: the server does not call it, CI does not run it, and no
+              key is needed to build, test or contribute.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 self-start sm:items-end sm:self-auto">
+            <Link
+              href="/docs/contributing/testsprite"
+              className="text-[14px] font-semibold text-accent transition-colors hover:text-fg"
+            >
+              How the suite is run &rarr;
+            </Link>
+            <a
+              href="https://docs.testsprite.com/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-[13px] text-fg-muted transition-colors hover:text-fg-secondary"
+            >
+              TestSprite documentation
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function Ownership() {
   const claims = [

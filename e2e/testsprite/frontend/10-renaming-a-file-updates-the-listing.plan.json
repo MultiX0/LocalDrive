@@ -1,0 +1,29 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Renaming a file shows the new name in the listing",
+  "description": "A rename is reflected in the folder listing under the new name, and the old name is gone.",
+  "priority": "p2",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Select a file in the listing"
+    },
+    {
+      "type": "action",
+      "description": "Open the rename action for that file"
+    },
+    {
+      "type": "action",
+      "description": "Enter a new unique name and confirm"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the file appears in the listing under its new name"
+    }
+  ]
+}

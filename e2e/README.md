@@ -1,13 +1,13 @@
 # End-to-end tests
 
-**Nothing here yet.** This directory is the agreed location, not an existing
-suite. It holds this file so that when someone adds end-to-end coverage there
-is no argument about where it goes, and no temptation to put it inside
-`server/` or `localdrive/`.
+The suite lives in [`testsprite/`](testsprite/). It drives a deployed server and
+a real browser the way a person would. Start with
+[TestSprite](../docs/contributing/testsprite.mdx) for how to install the CLI,
+run it, and read a failure.
 
-If you are looking for the tests that do exist, they are in
-`server/internal/**/*_test.go` and `localdrive/test/`. See
-[Testing](../docs/contributing/testing.mdx) for what belongs at which layer.
+The tests at every other layer are in `server/internal/**/*_test.go` and
+`localdrive/test/`, and they run locally with no account and no network. See
+[Testing](../docs/contributing/testing.mdx) for what belongs where.
 
 ## Why here
 
@@ -29,9 +29,10 @@ than at a screen.
 
 ```
 e2e/
-  fixtures/     files and accounts a run starts from
-  scenarios/    one directory per workflow under test
-  README.md     how to start an environment and run against it
+  testsprite/
+    frontend/   one plan per user workflow, in plain language
+    backend/    one Python file per API contract, asserted over HTTP
+    README.md   what each file covers, and what is still missing
 ```
 
 ## Requirements for whatever gets built here

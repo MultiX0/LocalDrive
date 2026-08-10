@@ -15,6 +15,7 @@ exists only where the sequence is not obvious from reading the code.
 | [client-feature](client-feature.md) | Building or changing something in the Flutter app |
 | [security-review](security-review.md) | Reviewing a change that touches auth, paths, uploads or sharing |
 | [release](release.md) | Cutting a version |
+| [verify-with-testsprite](verify-with-testsprite.md) | A change is done and needs proving against a running deployment |
 
 Every skill assumes the root `AGENTS.md` has been read, and the `AGENTS.md`
 nearest the code being changed.

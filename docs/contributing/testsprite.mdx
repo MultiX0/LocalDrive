@@ -1,0 +1,405 @@
+---
+title: TestSprite
+description: "The end-to-end layer: installing the CLI, running the suite, reading a failure, and fixing what it found."
+sidebar_position: 5
+---
+
+# TestSprite
+
+Local Drive's end-to-end tests run on [TestSprite](https://www.testsprite.com/).
+It occupies one layer of [the testing pyramid](testing.mdx): a deployed server
+and a real browser, driven the way a person would drive them.
+
+Everything below that layer stays exactly as it was. `go test` and
+`flutter test` are still the fast loop, still run on every push, and still where
+most changes are proven.
+
+## Why this layer needs something different
+
+The layers below run against source. This one runs against a deployment, and
+the interesting failures are the ones no unit test can see: a control that
+moved, a screen that renders before its data arrives, a redirect that loops.
+Writing those as browser scripts produces a suite that breaks whenever a class
+name changes and gets deleted within a year.
+
+TestSprite takes the workflow in sentences and drives the browser itself, so a
+test survives the refactor that renames the button. When one fails it returns a
+bundle: the failing step, the DOM around it, and a hypothesis. That is the
+part that makes a failure worth having.
+
+**It is a development dependency and nothing more.** The server does not call
+it, the client does not know it exists, and a contributor with no TestSprite
+account can still build, test and send a pull request. If this collaboration
+ended, `e2e/testsprite/` would be deleted and nothing else in the repository
+would change.
+
+## The constraint to understand first
+
+**TestSprite drives a browser from the cloud, so the target has to be publicly
+reachable.** The CLI rejects `localhost`, RFC1918 and link-local addresses.
+
+For a self hosted project this matters more than it would elsewhere, because
+the natural place to develop is a machine nobody else can route to. What
+follows from it:
+
+- A change that only exists on your laptop cannot be verified at this layer.
+  Say so; do not run the suite against a stale deployment and call the result a
+  verdict.
+- The suite runs against a staging server, a preview, or your own instance on a
+  domain.
+- The backend files are plain Python and can be run against a local server
+  directly while you write them. That is not a TestSprite run, but it does tell
+  you the assertion is right.
+- The [MCP server](#mcp-and-the-web-portal) tunnels a local app, which is the
+  other way round this constraint.
+
+## Prerequisites
+
+- Node.js 20.19+, 22.13+, or 24+. Odd numbered releases (21.x, 23.x) are not
+  supported.
+- A TestSprite account, and an API key from the dashboard.
+- A deployment of Local Drive on a public address, holding nothing you would
+  miss.
+
+## Install
+
+```bash
+npm install -g @testsprite/testsprite-cli
+testsprite --version
+```
+
+Or without installing anything globally:
+
+```bash
+npx @testsprite/testsprite-cli --version
+```
+
+Then, once:
+
+```bash
+testsprite setup
+```
+
+That asks for the API key, writes it to `~/.testsprite/credentials`, and
+installs the agent skills for your coding agent. To skip the skills:
+
+```bash
+testsprite setup --no-agent
+```
+
+Check it worked:
+
+```bash
+testsprite auth status
+testsprite doctor
+```
+
+## The API key
+
+The key is never committed, never pasted into a file in this repository, and
+never printed into a log.
+
+| Where | How |
+| --- | --- |
+| Your machine | `testsprite setup` writes `~/.testsprite/credentials`, mode `0600` |
+| A shell, one off | `TESTSPRITE_API_KEY=…` in the environment |
+| CI | A repository secret named `TESTSPRITE_API_KEY` |
+| More than one account | Profiles: `--profile <name>`, or `TESTSPRITE_PROFILE` |
+
+Nothing in this repository reads the key. The CLI finds it itself.
+
+## Projects
+
+Local Drive has two, because it is two things:
+
+| Project | Type | Points at | Covers |
+| --- | --- | --- | --- |
+| Local Drive web | `frontend` | The web client's public URL | The workflows in `e2e/testsprite/frontend/` |
+| Local Drive API | `backend` | The server's public URL | The contracts in `e2e/testsprite/backend/` |
+
+Create them once:
+
+```bash
+testsprite project create --type frontend --name "Local Drive web" \
+  --url https://your-deployment.example \
+  --instruction "A self hosted file server. Sign in first; the file list is the main screen."
+
+testsprite project create --type backend --name "Local Drive API"
+```
+
+Keep the ids where the CLI will find them:
+
+```bash
+export TESTSPRITE_PROJECT_ID=prj_…
+```
+
+## Running the suite
+
+The plans and the API tests live in `e2e/testsprite/`. See
+[its README](https://github.com/MultiX0/LocalDrive/tree/main/e2e/testsprite)
+for what each file covers.
+
+Validate the plans offline, with no key and no network:
+
+```bash
+npx @testsprite/testsprite-cli test lint --plan-from-dir ./e2e/testsprite/frontend
+```
+
+Create the frontend suite from the directory, and run it:
+
+```bash
+testsprite test create-batch \
+  --plan-from-dir ./e2e/testsprite/frontend \
+  --run --wait --target-url https://your-deployment.example \
+  --timeout 600 --output json
+```
+
+Create one backend test and run it:
+
+```bash
+testsprite test create --type backend --project "$TESTSPRITE_PROJECT_ID" \
+  --name "Reading anything owned by an account requires a session" \
+  --code-file ./e2e/testsprite/backend/test_unauthenticated_access_is_refused.py \
+  --run --wait --target-url https://your-deployment.example --timeout 600
+```
+
+Run everything already created:
+
+```bash
+testsprite test run --all --project "$TESTSPRITE_PROJECT_ID" --wait --output json
+```
+
+Re-run one after a fix. On the frontend this replays the saved script and is
+free; on the backend it dispatches the whole dependency closure:
+
+```bash
+testsprite test rerun <test-id> --wait
+```
+
+## Reading a failure
+
+Start with the triage card:
+
+```bash
+testsprite test result <test-id> --include-analysis
+```
+
+Then pull the bundle. It holds the failing step, the DOM around it, the test
+source and a root cause hypothesis, all anchored to one snapshot:
+
+```bash
+testsprite test failure get <test-id> --out ./.testsprite/failure
+```
+
+`--failed-only` trims it to the failing step and its neighbours, which is
+usually what you want when handing it to an agent. To pin an exact run rather
+than the latest failure, which matters when several run at once:
+
+```bash
+testsprite test artifact get <run-id> --out ./.testsprite/runs/<run-id>
+```
+
+`.testsprite/` is ignored by git. A bundle contains screenshots of whatever was
+on screen, so it stays local.
+
+## The loop
+
+This is the part worth internalising. A test that was written and never run has
+verified nothing.
+
+```
+change ──▶ run the test ──▶ read the failure bundle ──▶ decide what is wrong
+                 ▲                                              │
+                 └──────────────── fix, then rerun ◀────────────┘
+```
+
+Deciding what is wrong is the step that matters, and it has three answers:
+
+- **The application is wrong.** Fix the application. This is the common case and
+  the reason the layer exists.
+- **The product changed on purpose.** Update the plan to describe the new
+  intended behaviour, in the same commit as the change that caused it.
+- **The environment is wrong.** A deployment that had not finished, a fixture
+  account that was removed, a network fault. Fix the environment and run again;
+  changing the test would hide it.
+
+**Never edit a test to make it pass.** The intended behaviour is the source of
+truth, and a suite that is edited until it is green is worth less than no suite,
+because it still costs time to run and no longer tells anyone anything.
+
+## For coding agents
+
+The mechanics are covered by TestSprite's own agent skill, which the CLI
+installs and keeps in step with its own version:
+
+```bash
+testsprite agent install --target claude
+```
+
+`claude` is the mature target. `cursor`, `cline`, `windsurf`, `copilot`, `kiro`,
+`codex` and `antigravity` are also supported. Run `testsprite agent list` for
+where each one lands, and `testsprite agent status` to check an installed skill
+is not stale.
+
+Those generated files are ignored by git. Each contributor installs the ones for
+their own tool, so no single editor's copy sits in the repository going out of
+date.
+
+What is specific to this project, meaning when the layer is worth reaching for
+and what a failure means here, is in
+[`.ai/skills/verify-with-testsprite.md`](https://github.com/MultiX0/LocalDrive/blob/main/.ai/skills/verify-with-testsprite.md).
+Read that with [AI agents](ai-agents.mdx).
+
+## Running it from a pipeline
+
+There is no TestSprite job in this repository's CI, deliberately. Runs cost
+credits and need a deployment to point at, so they happen when somebody decides
+they are worth it rather than on every push. The layers that are free and fast
+run in CI; this one is driven from a machine, by a person or by an agent.
+
+If you do wire it into a pipeline of your own, the exit code is the contract:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Passed |
+| `1` | Failed, blocked or cancelled |
+| `3` | Auth: key missing, revoked, or the wrong scope |
+| `5` | Validation: a bad field, or a missing flag |
+| `7` | Timed out. Inconclusive rather than a regression; resume with `test wait` |
+| `11` | Rate limited. Honour `Retry-After` |
+| `12` | Out of credits |
+| `14` | The CLI is too old for the backend |
+
+Take the key from a secret, never a file in the repository, and treat `7` as
+inconclusive rather than red. The plans can be schema checked with no key and no
+network, which is the part worth automating first:
+
+```bash
+npx @testsprite/testsprite-cli test lint --plan-from-dir ./e2e/testsprite/frontend
+```
+
+## MCP, and what it is for here
+
+The CLI is the primary interface and everything above describes it. The MCP
+server is a second way in, aimed at an assistant working inside an editor, and
+it earns its place here for one specific reason: **it can test an app that is
+only running locally**, which the CLI cannot.
+
+That makes it the answer to the constraint at the top of this page. For a self
+hosted project where the normal state of a change is "running on my laptop", it
+is often the only interface that can verify anything at all.
+
+Install it for Claude Code:
+
+```bash
+claude mcp add TestSprite --env API_KEY=your_api_key -- npx @testsprite/testsprite-mcp@latest
+```
+
+Cursor, Trae, Windsurf, VS Code and GitHub Copilot are also supported; they take
+the same package in their own MCP settings, with `API_KEY` in the environment.
+See TestSprite's
+[MCP installation guide](https://docs.testsprite.com/mcp/getting-started/installation)
+for each client's exact configuration.
+
+It exposes tools rather than commands: bootstrap, a code summary, a standardised
+PRD, frontend and backend test plans, generate and execute, the result
+dashboard, and a rerun. The
+[tool reference](https://docs.testsprite.com/mcp/core/tools) lists them.
+
+**It writes into the working directory, and none of it is committed.** The MCP
+creates `testsprite_tests/`, holding generated test cases, reports, a
+`standard_prd.json`, and a `tmp/` directory with `config.json`, `code_summary.json`
+and `test_results.json`. Some of that carries an API key and a map of the
+codebase, so the whole tree is ignored by this repository, along with anything
+else either tool generates. The only TestSprite files tracked here are the ones
+written by hand in `e2e/testsprite/`.
+
+Choosing between them:
+
+| Situation | Use |
+| --- | --- |
+| Change is deployed somewhere public | The CLI |
+| Change is only running locally | The MCP |
+| Running the committed suite in `e2e/testsprite/` | The CLI |
+| Exploring what a new area should even test | The MCP |
+| Scripting, or anything that needs an exit code | The CLI |
+
+The Web Portal is the third piece and holds the account: keys, project
+credentials, the credit balance, and the dashboard a run links back to. Some
+settings exist only there, and this repository does not try to reproduce them.
+
+## Troubleshooting
+
+**`localhost` is rejected.** Working as intended. Use a deployment, or the MCP
+server for a local app.
+
+**`auth status` fails.** Run `testsprite setup`, or export
+`TESTSPRITE_API_KEY`. `testsprite doctor` says which part is missing.
+
+**A frontend test passes but asserts nothing useful.** Usually a step that says
+"verify the page loads". Assert the thing that would be wrong if the feature
+broke: a specific name in the listing, not visibility of a container.
+
+**A test fails only sometimes.** Score it before trusting it:
+`testsprite test flaky <test-id>`. A plan that depends on state left by an
+earlier run is the usual cause.
+
+**A run timed out (exit 7).** The run is still going server side. Resume with
+`testsprite test wait <run-id>` rather than triggering a second one.
+
+## Security
+
+**Nothing either tool generates is committed.** Only the files written by hand in
+`e2e/testsprite/` are tracked. Everything below is ignored, and the rules are
+deliberately broader than the paths in use today, because a key cannot be
+un-leaked:
+
+| Path | Why it stays out |
+| --- | --- |
+| `testsprite_tests/` | Written by the MCP. Holds generated cases and reports |
+| `testsprite_tests/tmp/config.json` | Can carry the API key |
+| `testsprite_tests/tmp/code_summary.json` | A map of the codebase |
+| `testsprite_tests/standard_prd.json` | Describes behaviour that may be unreleased |
+| `.testsprite/` | CLI state, and failure bundles |
+| `.testsprite/failure/`, `.testsprite/runs/` | Screenshots and DOM snapshots of the account the run used |
+| `TC001_*.py` and siblings | Generated test cases |
+| `.claude/skills/testsprite-*/` and the equivalents | Generated agent skills, one per editor |
+
+If you need to share a generated artifact, force add it deliberately after
+reading it. The default is out.
+
+The rest:
+
+- No key, token or password is committed anywhere. Placeholders only.
+- The API key lives in `~/.testsprite/credentials` (mode `0600`) or in the
+  environment. Nothing in this repository reads it; the CLI finds it itself.
+- Backend tests read the injected credential block and never hardcode one. A
+  hardcoded token expires and cannot be rotated, and `test create` warns when it
+  sees one.
+- Tests run against a dedicated account on a deployment holding nothing anyone
+  would miss. The frontend plans create folders, rename files and use the trash.
+- **Never point this suite at a server holding real files.** A run uploads,
+  renames and trashes things, and a failure bundle photographs whatever was on
+  screen.
+- Testing sends the application under test to a third party service. Treat that
+  as you would any hosted tool, and read TestSprite's own documentation for what
+  it retains.
+
+## Keeping this current
+
+TestSprite is moving quickly, so this page deliberately holds Local Drive's own
+workflow and links out for anything that changes underneath it. Commands here
+were verified against the CLI and the official documentation on **2026-08-11**,
+with `@testsprite/testsprite-cli` **v0.5.0** on Node 24.
+
+If something no longer matches, TestSprite's documentation wins:
+
+```bash
+testsprite --version
+testsprite doctor
+testsprite --help
+```
+
+The [CLI reference](https://docs.testsprite.com/cli/reference/command-reference)
+and [llms.txt](https://docs.testsprite.com/llms.txt) are the sources to check
+against. Update the verification date above when you do.

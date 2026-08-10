@@ -1,0 +1,25 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Searching for part of a file name lists that file",
+  "description": "The search field narrows the listing to files whose name matches what was typed.",
+  "priority": "p2",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Open the search field"
+    },
+    {
+      "type": "action",
+      "description": "Type part of the name of a file known to exist"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the matching file appears in the results"
+    }
+  ]
+}

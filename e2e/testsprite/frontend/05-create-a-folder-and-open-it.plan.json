@@ -1,0 +1,29 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Creating a folder adds it to the listing and it can be opened",
+  "description": "A new folder appears in the current listing under the name it was given, and opening it shows an empty folder.",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Open the create folder action"
+    },
+    {
+      "type": "action",
+      "description": "Enter a unique folder name"
+    },
+    {
+      "type": "action",
+      "description": "Confirm the folder creation"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the new folder appears in the current listing under the name it was given"
+    }
+  ]
+}

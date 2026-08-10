@@ -70,6 +70,13 @@ cd landing    && npm run build
 The landing build parses every documentation file and fails on an internal
 link that does not resolve. It is the link checker.
 
+**When the change is user visible, prove it against something running.** The
+end-to-end layer runs on TestSprite, and the judgement about when it is worth
+the cost is in [`.ai/skills/verify-with-testsprite.md`](.ai/skills/verify-with-testsprite.md).
+It cannot reach `localhost`, so a change that is only on this machine cannot be
+verified there — say that rather than pointing it at an older deployment. The
+checks above still come first, and still catch more per second spent.
+
 **Verify before claiming.** Do not report a command as working without running
 it. Several things in this project behave differently under Docker and as the
 bare binary, and guessing which is which produces documentation that fails for

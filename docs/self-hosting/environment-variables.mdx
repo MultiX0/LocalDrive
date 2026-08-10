@@ -31,6 +31,21 @@ cannot work, because they are what the server uses to decide where `.env` is.
 where the account has no home directory of its own. See
 [Keeping it running](/self-hosting/running-always).
 
+### A key written twice
+
+Changing a setting by appending a line is the obvious thing to do:
+
+```
+echo 'LD_PORT=80' >> .env
+```
+
+It leaves the file with `LD_PORT` in it twice, and **the first one wins**. The
+server takes the first value it sees, and so does `localdrive status`, so the
+two agree with each other, but neither uses the line you just added.
+
+Edit the existing line rather than appending a second one. A real environment
+variable still beats the file either way.
+
 ## Secrets are generated, not typed
 
 `JWT_SECRET`, `MOUNT_HELPER_SHARED_SECRET`, and `LAN_DISCOVERY_SHARED_SECRET`
@@ -53,7 +68,41 @@ the file regenerates them, which signs everyone out.
 | `LD_TLS_EMAIL` | empty | Renewal notices, only with a domain |
 | `LD_TLS` | `auto` | `off` stops the server asking for its own certificate. Docker pins this, since Caddy holds it there |
 | `PUBLIC_BASE_URL` | empty | Absolute base for share and invite links |
-| `CORS_ALLOWED_ORIGINS` | empty | Exact origins, comma separated, never `*` |
+| `CORS_ALLOWED_ORIGINS` | empty | Empty answers any origin. Set it to a comma separated list to narrow that. See [below](#which-pages-may-talk-to-your-server) |
+
+## Which pages may talk to your server
+
+`CORS_ALLOWED_ORIGINS` is empty by default, and empty means **any origin may
+call the API**. That is deliberate, and it is worth understanding before you
+decide whether to change it.
+
+Everyone runs their own server. The page talking to it is one somebody else
+hosts, on a domain this server has never heard of, so a list of permitted
+origins is not something it can know in advance. Refusing by default would mean
+every browser client fails until its address is typed into a config file.
+
+What that does and does not mean:
+
+- **It does not make your files public.** Every request still needs a token, and
+  the browser still refuses to send credentials it does not have. A page that
+  cannot sign in cannot read anything.
+- **It does mean a page on any domain can attempt a call.** It gets an
+  unauthorised answer without a token.
+- **Media is readable cross-origin too.** Thumbnails and video are fetched by
+  the element itself, and a stricter policy makes the browser drop the response,
+  which shows up as every picture being broken.
+
+Set it when you know exactly which client you use and want the smaller surface:
+
+```
+CORS_ALLOWED_ORIGINS=https://drive.example.com,https://files.example.com
+```
+
+Exact origins, comma separated, scheme included. Once it is set, anything not
+listed is refused, including the web client if you forget to add it.
+
+The websocket follows the same rule, so a client that may call the API may also
+open a socket to it.
 
 ## Process
 

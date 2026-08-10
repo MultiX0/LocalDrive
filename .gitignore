@@ -121,3 +121,69 @@ firebaseConfig.*
 firebase-*.json
 *-firebase-adminsdk-*.json
 service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+.runtimeconfig.json
+apphosting.yaml
+dataconnect-generated/
+
+# TestSprite
+#
+# Verified against the official CLI and MCP documentation on 2026-08-11.
+#
+# The only TestSprite files this project tracks are the ones it wrote by hand:
+# e2e/testsprite/frontend/*.plan.json and e2e/testsprite/backend/*.py. Every
+# path below is something a tool generates, and generated output here is not
+# harmless: tmp/config.json can carry the API key, code_summary.json is a map of
+# the codebase, standard_prd.json and the test plans describe unreleased
+# behaviour, and a failure bundle holds screenshots and DOM snapshots of
+# whatever account the run used.
+#
+# Anything ambiguous is ignored. A contributor who wants to share a generated
+# artifact can always force-add it deliberately; nobody can un-leak a key.
+
+# --- MCP server output (testsprite_tests/) ---
+testsprite_tests/
+**/testsprite_tests/
+
+# --- CLI output and local project state (.testsprite/) ---
+.testsprite/
+**/.testsprite/
+
+# --- credentials, wherever they land ---
+.testsprite/credentials
+testsprite.credentials
+**/testsprite*credentials*
+.env.testsprite
+testsprite.env
+
+# --- named artifacts, in case any of the above is ever run from elsewhere ---
+standard_prd.json
+code_summary.json
+report_prompt.json
+test_results.json
+TestSprite_MCP_Test_Report.*
+testsprite-mcp-*.json
+*.testsprite-report.json
+prd_files/
+
+# generated test case files the MCP numbers for you (TC001_..., TC002_...)
+TC[0-9][0-9][0-9]_*.py
+TC[0-9][0-9][0-9]_*.ts
+TC[0-9][0-9][0-9]_*.js
+
+# --- agent skills the CLI generates ---
+# Each contributor installs the ones for their own tool with
+# `testsprite agent install`, so committing one vendor's copy would date
+# instantly and favour a single editor.
+.claude/skills/testsprite-*/
+.agents/skills/testsprite-*/
+.cursor/rules/testsprite-*
+.clinerules/testsprite-*
+.kiro/skills/testsprite-*/
+.windsurf/rules/testsprite-*
+.github/instructions/testsprite-*
+.claude
+
+# Playwright MCP scratch output from local verification runs
+.playwright-mcp/

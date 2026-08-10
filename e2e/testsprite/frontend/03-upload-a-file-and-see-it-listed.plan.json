@@ -1,0 +1,29 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Uploading a file adds it to the current folder",
+  "description": "The uploaded file appears in the listing of the folder it was uploaded into, with its own name.",
+  "priority": "p0",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Open the file upload control"
+    },
+    {
+      "type": "action",
+      "description": "Choose a small test file to upload"
+    },
+    {
+      "type": "action",
+      "description": "Wait for the upload to report that it finished"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the uploaded file's name appears in the current folder listing"
+    }
+  ]
+}

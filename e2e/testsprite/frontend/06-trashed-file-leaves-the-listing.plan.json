@@ -1,0 +1,33 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Moving a file to the trash removes it from the folder listing",
+  "description": "A file moved to the trash is no longer shown in its folder, and is shown in the trash instead.",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Select a file in the listing"
+    },
+    {
+      "type": "action",
+      "description": "Move the selected file to the trash"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the file is no longer listed in the folder it was in"
+    },
+    {
+      "type": "action",
+      "description": "Open the trash view"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the file is listed in the trash"
+    }
+  ]
+}

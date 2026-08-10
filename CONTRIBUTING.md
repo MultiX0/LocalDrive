@@ -67,6 +67,23 @@ The landing build is not optional even for a documentation change. It parses
 every file in `docs/` and fails on a link that does not resolve, which is how
 broken cross references get caught.
 
+## Testing an application change
+
+The checks above are the whole requirement, and they need no account anywhere.
+
+Above them sits one more layer. Local Drive is tested end to end with
+[TestSprite](https://www.testsprite.com/), which drives a real browser against a
+running server. If your change affects a workflow somebody performs, signing in,
+uploading, sharing, permissions, running it there catches the class of bug the
+other layers cannot see.
+
+It is **recommended, not required**. There is no TestSprite check in CI, no key
+is needed to contribute, and a pull request is never blocked for not having run
+it. Say what you ran and what you did not, and that is enough.
+
+[Testing with TestSprite](docs/contributing/testsprite.mdx) covers installing
+the CLI, authenticating, and reading a failure.
+
 ## What makes a change easy to accept
 
 - **One thing.** A pull request that fixes a bug and reformats a file is two

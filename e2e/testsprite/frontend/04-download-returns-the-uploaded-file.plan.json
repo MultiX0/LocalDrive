@@ -1,0 +1,25 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "A file that was uploaded can be downloaded again",
+  "description": "The download action on a previously uploaded file starts a download of that file, which is the promise the whole product rests on.",
+  "priority": "p0",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Select a previously uploaded file in the listing"
+    },
+    {
+      "type": "action",
+      "description": "Trigger the download action for that file"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the download of the selected file starts without an error being shown"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Creating a share link for a file produces a link that opens without signing in",
+  "description": "A share link created from the share action opens the shared file for someone who is not signed in, which is the entire point of a link.",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Select a file in the listing"
+    },
+    {
+      "type": "action",
+      "description": "Open the share action for that file"
+    },
+    {
+      "type": "action",
+      "description": "Create a share link for the file"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify a share link is shown for the file"
+    }
+  ]
+}

@@ -122,7 +122,10 @@ func (a *API) Router() http.Handler {
 	r.Use(mw.RealIP(true))
 	r.Use(mw.Recover(a.log))
 	r.Use(mw.Logger(a.log))
-	r.Use(mw.SecurityHeaders)
+	// the CORS middleware reflects any origin when the allowed list is empty,
+	// so Cross-Origin-Resource-Policy must always be cross-origin to match;
+	// otherwise img, video and audio elements silently refuse the response
+	r.Use(mw.SecurityHeaders(true))
 	r.Use(mw.CORS(a.cfg.CORSAllowedOrigins))
 
 	r.Get("/healthz", a.handleHealth)

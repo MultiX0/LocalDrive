@@ -245,28 +245,43 @@ func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// CORS restricts cross-origin access to the configured origins. Never a
-// wildcard, per the security section of the plan.
+// CORS decides which pages may talk to this server.
+//
+// Empty is the shipped default and means any origin: everyone runs their own
+// server, and the client reaching it is a page somebody else hosts, so a list
+// this server cannot know in advance is not a list it can enforce. Setting
+// CORS_ALLOWED_ORIGINS is an operator deliberately narrowing that.
+//
+// The origin is reflected rather than answered with a wildcard, because a
+// wildcard and Allow-Credentials are not allowed together and every request
+// here carries a token.
 func CORS(allowed []string) func(http.Handler) http.Handler {
 	allowedSet := map[string]struct{}{}
 	for _, o := range allowed {
 		allowedSet[strings.TrimSuffix(o, "/")] = struct{}{}
 	}
+	allowAll := len(allowedSet) == 0
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := strings.TrimSuffix(r.Header.Get("Origin"), "/")
 			if origin != "" {
-				if _, ok := allowedSet[origin]; ok {
+				_, listed := allowedSet[origin]
+				if allowAll || listed {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Vary", "Origin")
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, HEAD, OPTIONS")
+					// Range is what a video element sends to seek, and without it
+					// listed the preflight fails and playback never starts
 					w.Header().Set("Access-Control-Allow-Headers",
-						"Authorization, Content-Type, Idempotency-Key, X-Request-Id, "+
+						"Authorization, Content-Type, Idempotency-Key, X-Request-Id, Range, If-None-Match, If-Modified-Since, "+
 							"Tus-Resumable, Upload-Length, Upload-Offset, Upload-Metadata, Upload-Defer-Length, X-CSRF-Token")
+					// a cross-origin response hides every header not named here,
+					// so a download loses its filename and a video its length
 					w.Header().Set("Access-Control-Expose-Headers",
 						"Location, Upload-Offset, Upload-Length, Tus-Resumable, Tus-Version, "+
-							"Tus-Extension, Tus-Max-Size, Local-Drive-Node-Id, X-Request-Id")
+							"Tus-Extension, Tus-Max-Size, Local-Drive-Node-Id, X-Request-Id, "+
+							"Content-Length, Content-Range, Accept-Ranges, Content-Disposition, ETag, Last-Modified")
 					w.Header().Set("Access-Control-Max-Age", "86400")
 				}
 			}
@@ -281,12 +296,26 @@ func CORS(allowed []string) func(http.Handler) http.Handler {
 
 // SecurityHeaders sets the small set that matters for an API plus a served
 // web build.
-func SecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Cross-Origin-Resource-Policy", "same-site")
-		next.ServeHTTP(w, r)
-	})
+//
+// crossOrigin relaxes Cross-Origin-Resource-Policy from same-site.
+//
+// A thumbnail, a video and an audio file are fetched by the element itself,
+// and same-site makes the browser refuse the response outright for a web
+// client served from anywhere but this server: every picture becomes a broken
+// image with no error a person could act on. That is the whole point of
+// allowing an origin in the first place, so the two settings move together.
+func SecurityHeaders(crossOrigin bool) func(http.Handler) http.Handler {
+	policy := "same-site"
+	if crossOrigin {
+		policy = "cross-origin"
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			w.Header().Set("Cross-Origin-Resource-Policy", policy)
+			next.ServeHTTP(w, r)
+		})
+	}
 }

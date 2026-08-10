@@ -91,9 +91,14 @@ func Serve(w http.ResponseWriter, r *http.Request, hub *Hub, client *Client, all
 	}
 }
 
-// originPatterns keeps the websocket handshake as restricted as CORS is. An
-// empty list means same-origin only, which is what nhooyr does by default.
+// originPatterns holds the websocket handshake to the same rule as CORS, so a
+// client that may call the API may also open a socket to it. An empty list is
+// the shipped default and means any origin, for the same reason it does there:
+// the page talking to this server is hosted somewhere it has never heard of.
 func originPatterns(allowed []string) []string {
+	if len(allowed) == 0 {
+		return []string{"*"}
+	}
 	out := make([]string, 0, len(allowed))
 	for _, origin := range allowed {
 		host := origin

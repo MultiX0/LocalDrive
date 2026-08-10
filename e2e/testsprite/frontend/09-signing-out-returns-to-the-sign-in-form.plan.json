@@ -1,0 +1,25 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Signing out ends the session and returns to the sign-in form",
+  "description": "After signing out the file list is no longer reachable and the sign-in form is shown again.",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Sign in with the test account"
+    },
+    {
+      "type": "action",
+      "description": "Open the settings section"
+    },
+    {
+      "type": "action",
+      "description": "Choose to sign out"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the sign-in form is shown and the file list is no longer visible"
+    }
+  ]
+}

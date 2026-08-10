@@ -1,0 +1,29 @@
+{
+  "projectId": "PROJECT_ID",
+  "type": "frontend",
+  "name": "Signing in with the correct password opens the file list",
+  "description": "An existing account that submits its correct username and password reaches the file list rather than staying on the sign-in form.",
+  "priority": "p0",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to the application root"
+    },
+    {
+      "type": "action",
+      "description": "Enter the test account username in the username field"
+    },
+    {
+      "type": "action",
+      "description": "Enter the test account password in the password field"
+    },
+    {
+      "type": "action",
+      "description": "Submit the sign-in form"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the file list for the signed-in account is visible"
+    }
+  ]
+}
