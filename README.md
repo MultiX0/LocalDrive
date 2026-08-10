@@ -285,6 +285,19 @@ testsprite test run --all --project "$TESTSPRITE_PROJECT_ID" --wait
 The suite is in [`e2e/testsprite/`](e2e/testsprite/): ten workflows written as
 sentences, and five checks on the API contract.
 
+<a href="https://github.com/TestSprite/testsprite-cli">
+  <img
+    src="https://opengraph.githubassets.com/1/TestSprite/testsprite-cli"
+    alt="TestSprite/testsprite-cli on GitHub: the official TestSprite CLI"
+    width="460">
+</a>
+
+<p>
+  <a href="https://www.npmjs.com/package/@testsprite/testsprite-cli"><img alt="npm" src="https://img.shields.io/npm/v/%40testsprite%2Ftestsprite-cli?label=cli&color=54B365"></a>
+  <a href="https://github.com/TestSprite/testsprite-cli/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/cli%20license-Apache--2.0-blue.svg"></a>
+  <a href="https://docs.testsprite.com/cli/"><img alt="Docs" src="https://img.shields.io/badge/docs-CLI%20reference-lightgrey.svg"></a>
+</p>
+
 **Recommended, never required.** TestSprite is a development dependency. The
 server does not call it, CI does not run it, and no key is needed to clone,
 build, test or send a pull request. The three commands above this section remain

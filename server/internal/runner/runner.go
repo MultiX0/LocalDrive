@@ -149,6 +149,14 @@ func Main(argv []string) int {
 
 	for _, mode := range Modes() {
 		if mode.Name == name {
+			// Asking what a command does must never be the same as doing it.
+			// Every mode used to receive its arguments and ignore them, so
+			// `reset-admin --help` rewrote the admin password, `stop --help`
+			// stopped the server and `backup --help` wrote a backup.
+			if wantsHelp(rest) {
+				PrintModeUsage(mode)
+				return 0
+			}
 			return mode.Run(rest)
 		}
 	}
@@ -156,6 +164,31 @@ func Main(argv []string) int {
 	fmt.Fprintf(os.Stderr, "localdrive: no such command %q\n\n", name)
 	PrintUsage()
 	return 2
+}
+
+// wantsHelp reports whether the arguments are asking what a command does.
+//
+// Only the two flags, never a bare "help": `backup help` is a plausible way to
+// write a backup into a directory called help, and refusing to do it would be
+// its own small bug.
+func wantsHelp(args []string) bool {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
+// PrintModeUsage says what one command is for, without running it.
+func PrintModeUsage(mode Mode) {
+	fmt.Println()
+	fmt.Printf("  localdrive %s\n", mode.Name)
+	fmt.Printf("  %s\n", mode.Summary)
+	fmt.Println()
+	fmt.Println("  Most commands ask for anything they need, so there is usually")
+	fmt.Println("  nothing to pass. Run `localdrive help` for the whole list.")
+	fmt.Println()
 }
 
 // RunVersion prints what this binary is.
