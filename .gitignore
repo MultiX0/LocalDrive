@@ -187,3 +187,14 @@ TC[0-9][0-9][0-9]_*.js
 
 # Playwright MCP scratch output from local verification runs
 .playwright-mcp/
+
+# Search engine ownership files
+#
+# Google hands you a file to upload and asks you never to remove it. It is
+# written into landing/public at build time from SITE_VERIFICATION_FILE, set on
+# the host, so the token that proves ownership of the domain never lands in a
+# public repository. See landing/scripts/site-verification.mjs.
+landing/public/google*.html
+landing/public/BingSiteAuth.xml
+landing/public/yandex_*.html
+**/google[0-9a-f]*.html
