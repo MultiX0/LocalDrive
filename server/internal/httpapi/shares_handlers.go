@@ -1,7 +1,11 @@
 package httpapi
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -188,6 +192,13 @@ type sharePasswordRequest struct {
 	Password string `json:"password"`
 }
 
+// sharePassword finds the password wherever the caller put it.
+//
+// Two clients post to this route and they disagree, so both have to be read.
+// The share page is a plain html form, which a browser sends form encoded; the
+// apps send json. Reading only json meant a password typed into the page came
+// back empty, the share refused to open, and the page re-rendered with the same
+// prompt. A correct password looked wrong, with nothing to say why.
 func sharePassword(r *http.Request) string {
 	if pw := strings.TrimSpace(r.URL.Query().Get("password")); pw != "" {
 		return pw
@@ -195,10 +206,29 @@ func sharePassword(r *http.Request) string {
 	if pw := strings.TrimSpace(r.Header.Get("X-Share-Password")); pw != "" {
 		return pw
 	}
-	if r.Method == http.MethodPost {
-		var body sharePasswordRequest
-		if decodeQuiet(r, &body) {
-			return body.Password
+	if r.Method != http.MethodPost || r.Body == nil {
+		return ""
+	}
+
+	// read once and try both, rather than trusting a Content-Type that a
+	// hand-written client may not have set
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxJSONBody))
+	r.Body.Close()
+	if err != nil {
+		return ""
+	}
+	// put it back, so anything further down the chain can still read it
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	var parsed sharePasswordRequest
+	if json.Unmarshal(body, &parsed) == nil {
+		if pw := strings.TrimSpace(parsed.Password); pw != "" {
+			return pw
+		}
+	}
+	if values, err := url.ParseQuery(string(body)); err == nil {
+		if pw := strings.TrimSpace(values.Get("password")); pw != "" {
+			return pw
 		}
 	}
 	return ""
