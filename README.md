@@ -53,11 +53,13 @@ versions, the sharing. Every rule is decided there and enforced there, on every
 request. That is the piece you install, the piece you back up, and the piece
 that is actually yours.
 
-The phone, desktop and browser apps hold nothing of their own. They ask the
-server what exists and show it. Uninstall every one of them and you have lost
-nothing, because none of them were ever where your files were. Point a fresh
-one at the same address and everything is back. You can also skip them
-entirely and use a browser.
+The phone and desktop apps hold nothing of their own. They ask the server what
+exists and show it. Uninstall every one of them and you have lost nothing,
+because none of them were ever where your files were. Point a fresh one at the
+same address and everything is back.
+
+Links you share are the exception. Those open in any browser, served by the
+server itself, so the person you sent one to installs nothing.
 
 ---
 
@@ -95,11 +97,38 @@ To keep it running after a reboot, see
 [Keeping it running](docs/self-hosting/running-always.mdx): systemd on Linux,
 Task Scheduler on Windows.
 
-### 3. Open it
+### 3. Open it from an app
 
-Go to `http://localhost:7443` in your browser.
+The server has no web interface. It serves an API, so `http://localhost:7443`
+in a browser answers with a 404 and
 
-The first screen asks you to make an admin account. That is you. Done.
+```json
+{"error":{"code":"not_found","message":"no such endpoint"}}
+```
+
+That is correct behaviour, not a broken install. The only page it renders for a
+browser is a share link.
+
+Install a client from
+[the latest release](https://github.com/MultiX0/LocalDrive/releases/latest):
+
+| | |
+|---|---|
+| Android | `localdrive-client.apk` |
+| Windows | `localdrive-client-setup.exe`, or `localdrive-client-windows.zip` |
+| Linux | `localdrive-client-linux.tar.gz` |
+
+Open it and point it at the address setup printed. On the same machine that is
+`localhost`, otherwise it is the machine's address on your network, for example
+`192.168.1.10`. The app also scans the network and usually lists the server on
+its own.
+
+The first account created becomes the admin. That is you. Afterwards the server
+refuses to create another one that way.
+
+If you installed with Docker, setup offers to make that account for you during
+install, and if you skip it the temporary login is `admin` / `admin12345`,
+which has to be changed before anything else works.
 
 Plain HTTP is the default, because no certificate authority will issue a
 certificate for an address on your own network. If you have a domain pointing
