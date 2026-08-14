@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.25.13"
           cache-dependency-path: server/go.sum
 
       - name: Verify formatting
@@ -104,7 +104,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.25.13"
           # the module lives in server/, not at the root. Without this the
           # cache lookup goes looking for a go.mod beside the workflow, misses,
           # and every run downloads the module set again.
@@ -156,7 +156,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.25.13"
           cache-dependency-path: server/go.sum
       - name: Build
         env:
