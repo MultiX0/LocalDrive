@@ -33,10 +33,16 @@ LABEL org.opencontainers.image.title="Local Drive" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.licenses="MIT"
 
+# the base image is a snapshot, so its packages are only as current as the day
+# it was rebuilt. Alpine ships security fixes to the branch well before that
+# happens, and without this upgrade the image carries whatever openssl the
+# snapshot froze rather than the patched one sitting in the repository.
+#
 # ffmpeg and poppler for thumbnails; the rest are the tools the drive helper
 # shells out to with fixed argument lists, and are only reachable in the
 # container that runs that mode
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache \
+ && apk add --no-cache \
       ffmpeg poppler-utils ca-certificates tzdata \
       util-linux e2fsprogs e2fsprogs-extra xfsprogs btrfs-progs \
       dosfstools exfatprogs ntfs-3g fuse3 \
