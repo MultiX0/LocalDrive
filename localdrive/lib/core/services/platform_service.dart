@@ -100,6 +100,31 @@ class PlatformService {
   /// that failed offline resumes without anyone reopening the app.
   Future<void> scheduleRetryOnReconnect() => _invoke('scheduleRetry');
 
+  /// Moves a finished download out of app storage and into the phone's own
+  /// Downloads folder, and returns where it landed.
+  ///
+  /// Android only, and it is not a nicety there. A download has to be written
+  /// inside the app to be resumable, but app storage is private, so a file
+  /// left there cannot be opened, shared or even found by anything else on the
+  /// device. Everywhere else the file is already somewhere reachable and this
+  /// returns null, which means "keep reporting the path you have".
+  Future<String?> publishDownload({
+    required String path,
+    String? mimeType,
+  }) async {
+    if (kIsWeb || !Platform.isAndroid) return null;
+    try {
+      return await _channel.invokeMethod<String>(
+        'publishDownload',
+        <String, dynamic>{'path': path, 'mimeType': mimeType},
+      );
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
   Future<void> _invoke(String method, [Map<String, dynamic>? arguments]) async {
     if (!hasBackgroundService) return;
     await _invokeAlways(method, arguments);
