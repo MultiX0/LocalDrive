@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
 
+    <!-- putting a finished download in the phone's Downloads folder. From
+         Android 10 that goes through MediaStore, which needs no permission,
+         so this is only ever asked for on the versions below it -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
+
     <!-- finding servers on the local network. Multicast is off by default on
          Android and has to be held open for the duration of a scan -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>

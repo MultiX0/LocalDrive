@@ -592,7 +592,7 @@ class TransferController extends Notifier<List<TransferModel>> {
       if (transfer.totalBytes > 0 && from >= transfer.totalBytes) {
         final path = await sink.finish();
         sink = null;
-        _completeDownload(id, transfer.totalBytes, path);
+        _completeDownload(id, transfer.totalBytes, await _handOver(transfer, path));
         return;
       }
 
@@ -629,7 +629,7 @@ class TransferController extends Notifier<List<TransferModel>> {
 
       final path = await sink.finish();
       sink = null;
-      _completeDownload(id, received, path);
+      _completeDownload(id, received, await _handOver(transfer, path));
 
       // an offline copy has to tell the offline registry it arrived, or the
       // badge stays hollow and the next reconcile downloads it all over again
@@ -656,6 +656,23 @@ class TransferController extends Notifier<List<TransferModel>> {
       _cancels.remove(id);
       _schedulePump();
     }
+  }
+
+  /// Gives a finished download to the platform's own downloads folder and
+  /// returns where it ended up, which is what the transfer row reports.
+  ///
+  /// An offline copy is deliberately left alone: it is meant to stay inside
+  /// the app, where the offline registry can find it again and where removing
+  /// it means removing the app's copy rather than someone's file. Everything
+  /// else, and everywhere the platform has nothing to hand it to, keeps the
+  /// path the sink already produced.
+  Future<String> _handOver(TransferModel transfer, String path) async {
+    if (transfer.destinationPath.isNotEmpty) return path;
+    final published = await ref.read(platformServiceProvider).publishDownload(
+          path: path,
+          mimeType: transfer.mimeType.isEmpty ? null : transfer.mimeType,
+        );
+    return published ?? path;
   }
 
   /// Reads the node's current checksum and hands it to the offline registry,
