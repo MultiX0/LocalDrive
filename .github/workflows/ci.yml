@@ -19,6 +19,12 @@ jobs:
   test:
     name: Build and test
     runs-on: ubuntu-latest
+    # every job carries one of these. GitHub's own default is six hours, which
+    # is not a timeout so much as a billing accident: a job that hangs runs all
+    # night and nobody hears about it until the morning. these numbers are
+    # roughly four times what the step actually takes, so a real slowdown still
+    # passes and a hang is reported while there is still a day left to fix it.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -48,6 +54,7 @@ jobs:
   client:
     name: Client analyze and test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: localdrive
@@ -56,6 +63,13 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          # pinned for the same reason Go and Node are. `channel: stable` alone
+          # installs whatever shipped most recently, so the toolchain moves
+          # under the project between two runs of an unchanged commit. that is
+          # what broke this job: 3.47 landed, build_runner stopped terminating,
+          # and CI went from two minutes to the six hour ceiling without anyone
+          # touching the repository. bump this deliberately, not by waking up.
+          flutter-version: 3.44.9
           channel: stable
           cache: true
 
@@ -76,6 +90,7 @@ jobs:
   docs:
     name: Documentation and site build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: landing
@@ -100,6 +115,7 @@ jobs:
   vulncheck:
     name: Vulnerability scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -115,6 +131,7 @@ jobs:
   image:
     name: Image build and scan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: test
     steps:
       - uses: actions/checkout@v7
@@ -137,6 +154,7 @@ jobs:
   cross-compile:
     name: The binary, for every target someone might run it on
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         include:

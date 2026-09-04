@@ -22,6 +22,7 @@ jobs:
   server:
     name: Server (${{ matrix.name }})
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +76,7 @@ jobs:
   android:
     name: Client (Android)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -85,6 +87,11 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          # kept in step with the CI workflow on purpose. an unpinned channel
+          # means the release artifacts are built by whichever toolchain was
+          # current that morning, so a tag cut twice does not produce the same
+          # binary and a broken Flutter release breaks publishing, not a PR.
+          flutter-version: 3.44.9
           channel: stable
           cache: true
 
@@ -164,11 +171,13 @@ jobs:
   windows-client:
     name: Client (Windows)
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.44.9
           channel: stable
           cache: true
 
@@ -215,11 +224,13 @@ jobs:
   linux-client:
     name: Client (Linux)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.44.9
           channel: stable
           cache: true
 
@@ -266,6 +277,7 @@ jobs:
     name: Publish
     needs: [server, android, windows-client, linux-client]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v8
         with:
